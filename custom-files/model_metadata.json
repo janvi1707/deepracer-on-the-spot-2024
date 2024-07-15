@@ -92,4 +92,4 @@
     "training_algorithm": "clipped_ppo",
     "action_space_type": "discrete",
     "version": "5"
-  }
+}
