@@ -1,143 +1,1085 @@
-# DeepRacer On The Spot
-Simple cloudformation templates to assist in creating ec2 instances for deep racer learning, with automated training start/end and up to 10X savings over training in console (when using ec2 spot instance). This is a wrapper around LarsLL's deepracer-for-cloud https://aws-deepracer-community.github.io/deepracer-for-cloud/ to make it very easy to start training in the AWS Console and take advantage of all amazing tools the deepracer-for-cloud repo gives you. 
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Setup a standard EC2 instance for deep racer
 
-Training on an EC2 has many advantages:
-<li>Being able to set up a customized action space
-<li>Train much faster with up to triple the number of workers on a g4dn.2xl instance
-<li>Ability to increment your training
-<li>Improved log analysis tools
-<li>Train as multiple models at once on different EC2 instances
-<li>Reduced cost: $0.22/hour (when using g4dn.2xlarge spot instance, or $0.75/hr when using on demand instance https://aws.amazon.com/ec2/pricing/on-demand/) cost of training versus $3.50/hour on amazon console
+Parameters:
+  InstanceType:
+    Type: String
+    Default: g4dn.2xlarge
+  ResourcesStackName:
+    Type: String
+  DeepRacerImportName:
+    Type: String
+  TimeToLiveInMinutes:
+    Type: Number
+    Description: timeout in minutes after which training is stopped and this stack is deleted
+    Default: 60
+    MinValue: 0
+    MaxValue: 1440 # 24 hours
+  AmiId:
+    Type: String
+    Description: the AMI we want to launch an ec2 instance against. By default this is the image created by central account 747447086422 owned by Tyler Wooten
+  BUCKET:
+    Type: String
+  CUSTOMFILELOCATION:
+    Type: String
+Outputs:
 
-## Architectural Overview
+  DNS:
+    Value: !GetAtt Instance.PublicDnsName
 
-The below diagram provides an overview of the architecture of DeepRacer on the Spot: -
+  Instance:
+    Value: !Ref Instance
 
-![diagram showing an overview of deepracer on the spot](media/architecture.png)
+  InstanceIP:
+    Description: The IP of the instance created
+    Value: !GetAtt Instance.PublicIp
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicIp"
 
-## Training Videos
-Training videos playlist: https://www.youtube.com/playlist?list=PL9qmHoKq77dTFS59WjHciNb0a0n0dE8iF
-* Overview: https://www.youtube.com/watch?v=GP7IZ6X5QPU&list=PL9qmHoKq77dTFS59WjHciNb0a0n0dE8iF
-* Setup and first run: https://www.youtube.com/watch?v=b4GHWZcIB18&list=PL9qmHoKq77dTFS59WjHciNb0a0n0dE8iF
-* Edit files: https://www.youtube.com/watch?v=EAFR7FSN4Bo&list=PL9qmHoKq77dTFS59WjHciNb0a0n0dE8iF
-* Update track: https://www.youtube.com/watch?v=XgdRSAeAzHk&list=PL9qmHoKq77dTFS59WjHciNb0a0n0dE8iF
-* Increment training: https://www.youtube.com/watch?v=9y5wx7fQUgc&list=PL9qmHoKq77dTFS59WjHciNb0a0n0dE8iF
-* Move model to console: https://www.youtube.com/watch?v=Fk0XCoE8M6U&list=PL9qmHoKq77dTFS59WjHciNb0a0n0dE8iF
+Resources:
 
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Name:
+            !ImportValue
+            'Fn::Sub': '${ResourcesStackName}-InstanceProfile'
+        ImageId: !Ref AmiId
+        InstanceType: !Ref InstanceType
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeType: gp3
+              VolumeSize: 60
+              DeleteOnTermination: 'true'
 
-## Setup
-* Log into AWS console and launch Cloud Shell
-* run `git clone https://github.com/aws-deepracer-community/deepracer-on-the-spot`
-* run `cd deepracer-on-the-spot`
+  Instance:
+    Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Count: '1'
+        Timeout: PT30M
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          commands:
+            1-signal-cfn:
+              command:
+                      !Sub "bash -c '/usr/local/bin/cfn-signal -s true -e 0 --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}'"
+            2-start-train:
+              command: "su -l ubuntu bash -c '/home/ubuntu/bin/start_training.sh'"
+          files:
+            /etc/profile.d/dots_vars.sh:
+              content:
+                Fn::Sub:
+                - |
+                  export MY_SNS_TOPIC=${SNS}
+                  export PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+                  export MY_BUCKET=${BUCKET};export DR_S3_URI=${BUCKET};export DEEPRACER_S3_URI=${BUCKET}
+                  export CUSTOM_FILE_LOCATION=${CUSTOMFILELOCATION}
+                  export DEEPRACER_REGION=${AWS::Region}
+                  export STACK_NAME=${AWS::StackName}
+                  export AWS_DEFAULT_REGION=${AWS::Region}
+                - SNS:
+                    Fn::ImportValue:
+                        !Sub "${ResourcesStackName}-InterruptionNotification"
+                  BUCKET:
+                    Fn::ImportValue:
+                        !Sub "${ResourcesStackName}-Bucket"
+              mode : "000755"
+              owner: root
+              group: root
+            /home/ubuntu/deepracer-for-cloud/import_model.sh: 
+              content:
+                Fn::Sub:
+                - sudo aws deepracer import-model --name '${DeepRacerImportName}' --description "$DR_WORLD_NAME imported from s3://$DR_UPLOAD_S3_BUCKET/$DR_UPLOAD_S3_PREFIX by DeepRacer on the Spot" --model-artifacts-s3-path s3://$DR_UPLOAD_S3_BUCKET/$DR_UPLOAD_S3_PREFIX  --role-arn ${DR_IMPORT_ROLENAME} --type REINFORCEMENT_LEARNING --region us-east-1
+                - DR_IMPORT_ROLENAME:
+                       Fn::ImportValue:
+                           !Sub "${ResourcesStackName}-DeepRacerServiceRole"
+              mode : "000755"
+              owner: root
+              group: root 
+            /home/ubuntu/deepracer-for-cloud/regular_upload.sh: 
+              content: |
+                sudo su ubuntu
+                cd ~/deepracer-for-cloud
+                source bin/activate.sh
+                source /etc/profile.d/dots_vars.sh
+                dr-reload
+                UPLOAD_INTERVAL=$((60*$DR_REGULAR_UPLOAD))
+                while [ true ]
+                do
+                  sleep $UPLOAD_INTERVAL
+                  dr-upload-model -f
+                done
+              mode : "000755"
+              owner: root
+              group: root
+            /home/ubuntu/deepracer-for-cloud/error_monitoring.sh: 
+              content: |
+                sudo su ubuntu
+                cd ~/deepracer-for-cloud
+                source bin/activate.sh
+                source /etc/profile.d/dots_vars.sh
+                dr-reload
+                LAST_CHECKPOINT="training_just_started"
+                while [ true ]
+                do
+                  if docker ps -a | grep -q Exited; then
+                    aws sns publish --topic-arn $MY_SNS_TOPIC --message "One or more containers have exited and training is no longer running but you are still incurring cost for $STACK_NAME in region $DEEPRACER_REGION.  It is recommended you search the docker logs using docker logs <container-id> --tail 1000 to find the root cause." --region $DEEPRACER_REGION
+                  fi
+                  CURRENT_CHECKPOINT=$(jq -r '.last_checkpoint | [.name][]' deepracer_checkpoints.json)
+                  if [[ $LAST_CHECKPOINT == $CURRENT_CHECKPOINT ]]; then
+                    aws sns publish --topic-arn $MY_SNS_TOPIC --message "Your training hasn't progressed to the next iteration for around one hour for $STACK_NAME in region $DEEPRACER_REGION.  It is recommended you check your training for errors, for example endless evaluations." --region $DEEPRACER_REGION
+                  else
+                    LAST_CHECKPOINT=$(jq -r '.last_checkpoint | [.name][]' deepracer_checkpoints.json)
+                  fi
+                  sleep 3600
+                done  
+              mode : "000755"
+              owner: root
+              group: root 
+            /home/ubuntu/bin/menu.html:
+              content: |
+                <!DOCTYPE html>
+                <html>
+                <body>
 
-## Create Base Resources
-### create-base-resources.sh
+                <h2>Video Feeds</h2>
+                <p><a href="/?robo=all&camera=kvs_stream&quality=75&width=480">Live KVS Stream</a></p>
+                <p><a href="/?robo=all&camera=camera&quality=75&width=480">Live Camera</a></p>
+                <p><a href="/?robo=all&camera=main_camera&quality=75&width=480">Live Main Camera</a></p>
+                <p><a href="/?robo=all&camera=sub_camera&quality=75&width=480">Live Sub Camera</a></p>
+                                
+                <h2>All logs summary in one view</h2>
+                <p><a href="output.txt">Output</a></p>
+                
+                <h2>Docker logs (last 1000 lines)</h2>
+                <p><a href="sagemaker.txt">Sagemaker</a></p>
+                <p><a href="robomaker.txt">Robomaker (Main worker)</a></p>
+                <p><a href="dockerstatus.txt">docker ps -a (command output)</a></p>
+                
+                <h2>Nvidia GPU status</h2>
+                <p><a href="nvidia-smi.txt">nvidia-smi (command output)</a></p>
 
-INPUTS:
-* stackName - name of base resource stack (example 'base')
-* ip - the IP of the machine you are using. This is needed to allowlist your machine's IPv4 to view the agent training and access our menu resources (can be found here https://www.whatismyip.com/)
+                <h2>Storage Capacity</h2>
+                <p><a href="df.txt">df output (command output)</a></p>
+                
+                <h2>Custom logs (last 1000 lines)</h2>
+                <p><a href="OutputLog.txt">OutputLog</a></p>
+                <p><a href="completedlaps.txt">Completed Laps - last step from Robomaker output (all Workers)</a></p>
+                
+                <h2>Configuration files</h2>
+                <p><a href="run.env.txt">run.env</a></p>
+                <p><a href="system.env.txt">system.env</a></p>
+                <p><a href="hyperparameters.json">hyperparameters.json</a></p>
+                <p><a href="model_metadata.json">model_metadata.json</a></p>
+                <p><a href="reward_function.py.txt">reward_function.py</a></p>
+                
+                <h2>Training metrics</h2>
+                <p><a href="TrainingMetrics.json">TrainingMetrics.json</a></p>
+                <p><a href="deepracer_checkpoints.json">deepracer_checkpoints.json</a></p>
+                <p><a download href="robomaker1.log">robomaker1.log</a></p>
 
-Example:
-`./create-base-resources.sh base 11.111.11.11.1`
-**This will run for around 3 minutes.**
+                <h2>Training/Evaluation monitoring graphs</h2>
+                <p><a href="update_to_grafana_url">Live Grafana Dashboard</a></p>
+                <p><a href="Training_and_Evaluation_Overview.html">Training_and_Evaluation_Overview</a></p>
+                <p><a href="Training_progress.html">Training_progress</a></p>
+                <p><a href="Quintiles.html">Quintiles</a></p>
+                <p><a href="Heatmap.html">Reward Heatmap</a></p>
+                <p><a href="Data_tables.html">Data in tables</a></p>
+                <p><a href="Path_for_complete_laps.html">Path_for_complete_laps</a></p>
+                <p><a href="update_to_jupyter_url">Access Jupyter Notebook</a></p>
 
-The primary purpose of this template is to provide a simple single script to run that sets up all of the prerequisite AWS resources to allow deepracer-for-cloud to run on EC2 instances (https://aws-deepracer-community.github.io/deepracer-for-cloud/). **This should only be ran once per sandbox per region**. This is accomplished by creating the following:
-* S3 bucket
-* SNS Topic that has messages published to it in the event of spot instance termination to stop training safely and upload model
-* EC2 quota limit increases to be able to run 2 x g4dn.2xlarge spot or on demand instances (See FAQs if AWS query the rationale for the quota request)
-* Role used to import finished model into the AWS DeepRacer console
+                </body>
+                </html>
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Training_and_Evaluation_Overview.html:
+              content: |
+                <!DOCTYPE html>
+                <html>
+                <body>       
+                <h2>Training analysis is typically available 20-30 minutes into training.  Please refresh in a few minutes. </h2>
+                </body>
+                </html>
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Training_progress.html:
+              content: |
+                <!DOCTYPE html>
+                <html>
+                <body>    
+                <h2>Training analysis is typically available 20-30 minutes into training.  Please refresh in a few minutes. </h2>
+                </body>
+                </html>
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Quintiles.html:
+              content: |
+                <!DOCTYPE html>
+                <html>
+                <body>        
+                <h2>Training analysis is typically available 20-30 minutes into training.  Please refresh in a few minutes. </h2>
+                </body>
+                </html>
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Heatmap.html:
+              content: |
+                <!DOCTYPE html>
+                <html>
+                <body>        
+                <h2>Training analysis is typically available 20-30 minutes into training.  Please refresh in a few minutes. </h2>
+                </body>
+                </html>
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Data_tables.html:
+              content: |
+                <!DOCTYPE html>
+                <html>
+                <body>        
+                <h2>Training analysis is typically available 20-30 minutes into training.  Please refresh in a few minutes. </h2>
+                </body>
+                </html>
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Path_for_complete_laps.html:
+              content: |
+                <!DOCTYPE html>
+                <html>
+                <body>         
+                <h2>Training analysis is typically available 20-30 minutes into training.  Please refresh in a few minutes. </h2>
+                </body>
+                </html>
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/bin/web_monitoring.sh:
+              content: |
+                #!/bin/bash
+                /home/ubuntu/bin/start_analysis.sh
+                USAGE_OUTPUT=output.txt
+                cd ~/deepracer-for-cloud
+                while [ true ]
+                do
+                  # This loop collects training data available and publishes it on the nginx docker. accessible through Public_IP:8100/menu.html                   
+                  
+                  # Update variable references before every iteration in case of any change on the config files, this is similar to dr-reload
+                  source ~/deepracer-for-cloud/bin/activate.sh > /dev/null 2>&1
+                  echo "-----------------------------------" > $USAGE_OUTPUT
+                  
+                  # Get model name being trained
+                  cat ~/deepracer-for-cloud/run.env | egrep "^DR_LOCAL_S3_MODEL_PREFIX" >> $USAGE_OUTPUT
+                  
+                  # get timestamp to know if the data published is current
+                  date --utc +%F_%T_UTC >> $USAGE_OUTPUT
+                  
+                  # known training issues # 1 - GPU ran out of memory
+                  outofmemoryerrors=$(docker logs $(dr-find-sagemaker) 2>&1 | grep "ran out of memory"|wc -l)
+                  if [[ $outofmemoryerrors -ge 1 ]];then
+                    echo "  ########### ERROR ------> GPU RAN OUT OF MEMORY !!!!!!  ###########" >> $USAGE_OUTPUT
+                  fi
+                  
+                  # get Checkpoint status (best checkpoint, last checkpoint, current checkpoint)
+                  docker logs $(dr-find-sagemaker) 2>&1 | grep "Best checkpoint" | tail -n 1 >> $USAGE_OUTPUT
+                  docker logs $(dr-find-sagemaker) 2>&1 | grep Checkpoint | tail -n 1  >> $USAGE_OUTPUT
+                  
+                  echo "=====Robomaker (main Worker)=====" >> $USAGE_OUTPUT
+                  docker logs $(dr-find-robomaker) 2>&1 | egrep '^(SIM_TRACE_LOG.*(omplete|off_)|^reward_output)' | tail -n 10 | grep "omplete\|off_\|reward_output\|checkpoint"  >> $USAGE_OUTPUT
+                  
+                  echo "=====Sagemaker policy training=====" >> $USAGE_OUTPUT
+                  docker logs $(dr-find-sagemaker) 2>&1 | egrep '^Policy training' | tail -n 1 >> $USAGE_OUTPUT
+                  
+                  echo "=====GPU performance=====" >> $USAGE_OUTPUT
+                  nvidia-smi > nvidia-smi.txt 2>&1
+                  grep Default nvidia-smi.txt >> $USAGE_OUTPUT  2>&1
 
-This bash script utilizes the base.resources.yaml template file to provision the above resources. 
+                  echo "=====Storage Availability=====" >> $USAGE_OUTPUT
+                  df > df.txt 2>&1
+                  cat df.txt >> $USAGE_OUTPUT  2>&1
+                  
+                  echo "=====Docker containers status=====" >> $USAGE_OUTPUT
+                  docker ps -a > dockerstatus.txt  2>&1
+                  cat dockerstatus.txt >> $USAGE_OUTPUT  2>&1
+                  
+                  # known training issues # 2 - At least one required DOCKER CONTAINER EXITED
+                  dockererrors=$(grep "exited" dockerstatus.txt | egrep 'deepracer-(sagemaker|rlcoach|robomaker)' | wc -l)
+                  if [[ $dockererrors -ge 1 ]];then
+                    echo "  ########### ERROR ------> At least one required DOCKER CONTAINER EXITED !!!!!!  ###########" >> $USAGE_OUTPUT
+                  fi
+                  
+                  echo "=====CPU average load (1min / 5min / 15min avg)=====" >> $USAGE_OUTPUT
+                  cat /proc/loadavg >> $USAGE_OUTPUT 2>&1
+                  
+                  echo "=====Memory usage=====" >> $USAGE_OUTPUT
+                  cat /proc/meminfo | egrep '(^MemTotal|^MemFree|^SwapTotal|^SwapFree)' >> $USAGE_OUTPUT 2>&1
+                  
+                  echo "=====Robomaker Testing result logs (all Workers)=====" >> $USAGE_OUTPUT
+                  for name in `docker ps --format "{{.Names}}" | grep obomaker`
+                  do
+                    docker logs ${name} 2>&1 | egrep '^Testing>' | tail -n 10  >> $USAGE_OUTPUT
+                    docker logs ${name} >& ${name}.log
+                  done
 
----
-## Create Standard/Spot Instance
-### create-standard-instance.sh
-### create-spot-instance.sh
+                  mv deepracer-0_robomaker.1.*.log robomaker1.log
+                  mv deepracer-0-robomaker-1.log robomaker1.log
 
-INPUTS:
-* baseResourcesStackName - stackName from create-base-resource.sh if you ever forget this, you can go to cloudformation and see old stacks
-* stackName - name of this stack that will provision an ec2 instance and automatically train deepracer training.  This is also the name used for your model when it's imported into the AWS DeepRacer console, and therefore must conform to that naming convention (Up to 64 characters. Valid characters: A-Z, a-z, 0-9, and hypens (-). No spaces or underscores (_).)
-* timeToLiveInMinutes - how long you want this ec2 instance to run for. after X minutes, the instance will be terminated. Default: 60, Min:0, Max: 1440 . If you want the instance to stay alive forever, set this value to 0 (caution: you will be charged per hour the instance is running, and you will need to stop/terminate the instance on your own). You can also increase the max time in standard-instance.yaml or spot-instacnce.yaml if you wish to have a model train more than 24 hours.
+                  echo "=====Sagemaker training logs=====" >> $USAGE_OUTPUT
+                  docker logs $(dr-find-sagemaker) 2>&1 | egrep '^Training>' | tail -n 10 >> $USAGE_OUTPUT
+                  
+                  echo "=====Robomaker Top 10 completed laps (all Workers)=====" >> $USAGE_OUTPUT
+                  if [ -f $USAGE_OUTPUT.tmp ] ;then
+                    rm "$USAGE_OUTPUT.tmp" > /dev/null 2>&1
+                  fi
+                  for name in `docker ps --format "{{.Names}}"`
+                  do
+                    docker logs ${name} 2>&1 | egrep '^SIM_TRACE_LOG.*(omplete)' | sort --field-separator=',' --key=2 | head -n 10000 >> $USAGE_OUTPUT.tmp
+                  done
+                  echo "Number of completed laps: $(cat $USAGE_OUTPUT.tmp | wc -l)" >> $USAGE_OUTPUT 2>&1  
+                  cat $USAGE_OUTPUT.tmp | sort --field-separator=',' --key=2 | head -n 1000 > completedlaps.txt 2>&1
+                  head completedlaps.txt -n 10 >> $USAGE_OUTPUT 2>&1
+                  
+                  echo "=====Robomaker (main Worker) - OutputLog: =====" >> $USAGE_OUTPUT
+                  docker logs $(dr-find-robomaker) 2>&1 | tail -n 1000 > OutputLog.txt
+                  tail OutputLog.txt -n 10 >> $USAGE_OUTPUT
+                  rm $USAGE_OUTPUT.tmp  > /dev/null 2>&1
+                  echo "###################" >> $USAGE_OUTPUT
+                
+                  # Collecting remaining common output files, metrics and uploading them to website
+                  docker logs $(dr-find-sagemaker) 2>&1 | tail -n 1000 > sagemaker.txt
+                  docker logs $(dr-find-robomaker) 2>&1 | tail -n 1000 > robomaker.txt
+                  aws s3 cp s3://$DR_LOCAL_S3_BUCKET/$DR_LOCAL_S3_MODEL_PREFIX/metrics/TrainingMetrics.json . > /dev/null 2>&1
+                  aws s3 cp s3://$DR_LOCAL_S3_BUCKET/$DR_LOCAL_S3_MODEL_PREFIX/model/deepracer_checkpoints.json . > /dev/null 2>&1
+                  for ID  in `docker ps --filter name=viewer --format "{{.ID}}"`
+                  do
+                    docker cp $USAGE_OUTPUT $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp nvidia-smi.txt $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp df.txt $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp dockerstatus.txt $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp completedlaps.txt $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp OutputLog.txt $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp sagemaker.txt $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp robomaker.txt $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp robomaker1.log $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp TrainingMetrics.json $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp deepracer_checkpoints.json $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp ~/deepracer-for-cloud/run.env $ID:/usr/share/nginx/html/run.env.txt > /dev/null 2>&1
+                    docker cp ~/deepracer-for-cloud/system.env $ID:/usr/share/nginx/html/system.env.txt > /dev/null 2>&1
+                    docker cp ~/deepracer-for-cloud/custom_files/hyperparameters.json $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp ~/deepracer-for-cloud/custom_files/model_metadata.json $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker cp ~/deepracer-for-cloud/custom_files/reward_function.py $ID:/usr/share/nginx/html/reward_function.py.txt > /dev/null 2>&1
+                    docker cp /home/ubuntu/bin/menu.html $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    #Update training analysis
+                    ANALYSIS_ID=$(docker ps --filter name=deepracer-analysis --format "{{.ID}}")
+                    docker exec $ANALYSIS_ID jupyter nbconvert --no-input --to html --execute import_from_s3.ipynb
+                    docker exec $ANALYSIS_ID jupyter nbconvert --no-input --to html --execute Training_progress.ipynb
+                    docker cp $ANALYSIS_ID:/workspace/Training_progress.html .
+                    docker cp Training_progress.html $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker exec $ANALYSIS_ID jupyter nbconvert --no-input --to html --execute Heatmap.ipynb
+                    docker cp $ANALYSIS_ID:/workspace/Heatmap.html .
+                    docker cp Heatmap.html $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker exec $ANALYSIS_ID jupyter nbconvert --no-input --to html --execute Quintiles.ipynb
+                    docker cp $ANALYSIS_ID:/workspace/Quintiles.html .
+                    docker cp Quintiles.html $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker exec $ANALYSIS_ID jupyter nbconvert --no-input --to html --execute Data_tables.ipynb
+                    docker cp $ANALYSIS_ID:/workspace/Data_tables.html .
+                    docker cp Data_tables.html $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker exec $ANALYSIS_ID jupyter nbconvert --no-input --to html --execute Path_for_complete_laps.ipynb
+                    docker cp $ANALYSIS_ID:/workspace/Path_for_complete_laps.html .
+                    docker cp Path_for_complete_laps.html $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                    docker exec $ANALYSIS_ID jupyter nbconvert --no-input --to html --execute Training_and_Evaluation_Overview.ipynb
+                    docker cp $ANALYSIS_ID:/workspace/Training_and_Evaluation_Overview.html .
+                    docker cp Training_and_Evaluation_Overview.html $ID:/usr/share/nginx/html/ > /dev/null 2>&1
+                  done
+                  
+                  # if the EC2 has started the termination process we do not want to upload $USAGE_OUTPUT to S3
+                  if [[ ! -f /home/ubuntu/bin/termination.started ]];then
+                    cp $USAGE_OUTPUT /tmp/logs/ > /dev/null 2>&1
+                  fi
+                  sleep 300
+                done
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/bin/start_training.sh:
+              content: |
+                #!/bin/bash
+                source /etc/profile.d/dots_vars.sh
+                aws sns publish --topic-arn $MY_SNS_TOPIC --message "Training has initiated for on a new instance for $STACK_NAME in region $DEEPRACER_REGION.  The new url to monitor progress is http://$PUBLIC_IP:8100/menu.html" --region $DEEPRACER_REGION
+                cd ~/deepracer-for-cloud
+                sed -i '/DR_AWS_APP_REGION=/d' /home/ubuntu/deepracer-for-cloud/system.env
+                sed -i -e '$aDR_AWS_APP_REGION=$DEEPRACER_REGION' /home/ubuntu/deepracer-for-cloud/system.env
+                sed -i "s/DR_UPLOAD_S3_BUCKET=not-defined/DR_UPLOAD_S3_BUCKET=$DEEPRACER_S3_URI/" ~/deepracer-for-cloud/system.env
+                sed -i "s/DR_LOCAL_S3_BUCKET=bucket/DR_LOCAL_S3_BUCKET=$DEEPRACER_S3_URI/" ~/deepracer-for-cloud/system.env
+                sed -i "s/DR_UPLOAD_S3_PREFIX=upload/DR_UPLOAD_S3_PREFIX=$DR_LOCAL_S3_MODEL_PREFIX-upload/" ~/deepracer-for-cloud/run.env
+                sed -i "s|DR_LOCAL_S3_CUSTOM_FILES_PREFIX=custom_files|DR_LOCAL_S3_CUSTOM_FILES_PREFIX=$CUSTOM_FILE_LOCATION|" ~/deepracer-for-cloud/run.env
+                source bin/activate.sh
+                dr-download-custom-files
+                cp custom_files/*.env .
+                dr-reload
+                # Setup required config if using OpenGL training
+                if [[ $DR_HOST_X == True ]];then
+                  sudo apt-get update
+                  ./utils/setup-xorg.sh
+                  ./utils/start-xorg.sh
+                  sleep 15
+                fi
+                # There is a bug where at some times the training fails to start, so we start, stop and start it again to reduce the occurrences of this issue. 
+                nohup /bin/bash -lc 'cd ~/deepracer-for-cloud/; dr-start-training -qw; sleep 120; dr-stop-training; sleep 60; echo y | docker container prune; dr-reload; dr-start-training -qwv' &
+                mkdir -p /tmp/logs/
+                # We want to be able to monitor our EC2 training without needing to connect to console, so we upload all needed info to Public_IP:8100/menu.html using this script
+                nohup /bin/bash -lc 'source /home/ubuntu/bin/web_monitoring.sh >/dev/null 2>&1' &
+                sleep 180 > /dev/null
+                if [[ $DR_REGULAR_UPLOAD -gt 0 ]];then
+                  ./regular_upload.sh &
+                fi
+                #start hourly error monitoring to notify on container exited or last checkpoint not progressing in the last hour
+                ./error_monitoring.sh &
+                while [ True ]; do
+                    # if the EC2 started termination process upon interruption notification, this file should exist, hence we leave termination process to manage final uploads without conflict
+                    if [[ -f /home/ubuntu/bin/termination.started ]];then
+                      break
+                    fi
+                    # Update variable references before every iteration in case of any change on the config files
+                    source ~/deepracer-for-cloud/bin/activate.sh
+                    
+                    for name in `docker ps -a --format "{{.Names}}"`; do
+                        docker logs ${name} > /tmp/logs/${name}.log 2>&1
+                    done
+                    # Only upload best Checkpoint if best Checkpoint has changed
+                    bestcheckpoint=$(echo n | dr-upload-model -b 2>&1 | grep "checkpoint:")
+                    aws s3 cp /tmp/logs/ s3://$DEEPRACER_S3_URI/$DR_LOCAL_S3_MODEL_PREFIX/logs/ --recursive
+                    rm -rf /tmp/logs/*.* > /dev/null 2>&1
+                    if [ [ "$bestcheckpoint" != "$lastbestcheckpoint" ] && [ "$bestcheckpoint" != "" ] ];then
+                      # update file timestamp just to avoid conflict with termination process
+                      touch /home/ubuntu/bin/uploading_best_model.timestamp 2>&1
+                      dr-upload-model -bf > /dev/null 2>&1
+                      lastbestcheckpoint=$bestcheckpoint
+                    fi
+                    sleep 120
+                done
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/bin/start_analysis.sh:
+              content: |
+                #!/bin/bash
 
-Example:
-`./create-standard-instance.sh base firstmodelbase 30`
-`./create-spot-instance.sh base firstmodelspot 30`
-**This will run for around 3 minutes. Viewing the training will starts 5-7 minutes after this completes**
+                cd ~/deepracer-for-cloud
+                source bin/activate.sh
+                source /etc/profile.d/dots_vars.sh
+                sudo sed -i '/# Grafana options/a GF_AUTH_ANONYMOUS_ENABLED=true' docker/metrics/configuration.env
+                dr-start-metrics
 
-Once this script completes, two links will be printed to console that show the visual training of the model and the log links of the training model I.E. ( 3.87.87.207:8080 and http://3.87.87.207:8100/menu.html respectively ). Paste these into your browser and **wait 5-7 minutes for training to begin**. On the visual training page, the link "/racecar/main_camera/zed/rgb/" will look most similar to the DeepRacer Console.
+                docker run -d -p 8888:8888 --name deepracer-analysis awsdeepracercommunity/deepracer-analysis:cpu
+                
+                while [ "$TOKEN" == "" ]
+                do
+                  TOKEN=$(docker logs deepracer-analysis 2>&1 | grep -o -E "token=[0-9a-f]+" | head -n 1)
+                done
 
-create-standard-instance.sh creates a single on demand ec2 instance. The instance type used is configured as the default in the standard-instance.yaml cloudformation template file.
-create-spot-instance.sh creates an Autoscaling Group comprised of a desired capacity of a single spot ec2 instance if available. This is a fantastic way to save a lot of money on training DeepRacer models, as training on a g4dn.2xl spot instance can get you 4 workers at $0.22/hour (compared to $3.50/hour for 1 worker in console). Note, deployment may fail if there isn't any spot instances of this size available. Procuring a spot instance is most common outside of US work hours.  If training is interrupted by a spot termination, assuming new spot capacity becomes available during your defined training 'timeToLiveInMinutes' a new Spot instance will be created within the autoscaling group and the training will continue from where it terminated.  This will create additional files in your S3 bucket, as subsequent training will be uploaded with -continued-YYYYMMDD-HHMM appended to your training (DR_LOCAL_S3_MODEL_PREFIX) and upload (DR_UPLOAD_S3_PREFIX) locations. If you struggle to get spot capacity you could deploy in another region, but if you do this you need to create an AMI (using scripts/create-image-builder.sh).
+                JUPYTER_URL=http://$PUBLIC_IP:8888/?$TOKEN
+                GRAFANA_URL="http://$PUBLIC_IP:3000/d/adke0lwv5zwg0e/deepracer-training-template?orgId=1&refresh=10s"
 
-This script can be executed many times (the DeepRacer console limits you to training a max of 4 concurrent models), with different instance stack names. All the different instances will share the base resources (efs and s3).  It is strongly recommended if using spot training and you want to run execute this script multiple times concurrently that you define unique locations for where your custom files are stored (DR_LOCAL_S3_CUSTOM_FILES_PREFIX).  This is because the spot interruption handler updated the run.env to be able to continue previous training, failing to alter this could result in overwriting training of one model with the previous progress of a different model being trained concurrently.
+                sudo sed -i "s|update_to_jupyter_url|${JUPYTER_URL}|" /home/ubuntu/bin/menu.html
+                sudo sed -i "s|update_to_grafana_url|${GRAFANA_URL}|" /home/ubuntu/bin/menu.html
 
-Both spot and standard instance requests are launched using a daily refreshing AMI that is generated in a source AWS account to always grab the newest docker images for robomaker/sagemaker/coach. If you wish to run your own AMI, or run in a region other than us-east-1, use ./create-image-builder.sh to create the daily refreshing pipeline and update your spot/standard instance bash scripts to use your AMI. NOTE: using your own AMI will incur a charge of ~$1/day because an EC2 instance will be created daily to update the AMI.
+                S3_PREFIX_FOR_ANALYSIS=$(cat run.env | grep DR_LOCAL_S3_MODEL_PREFIX= | awk -F'=' '{print $2}')
+                DEEPRACER_TRACK=$(cat run.env | grep DR_WORLD_NAME= | awk -F'=' '{print $2}')
+                DEEPRACER_WORKERS=$(cat system.env | grep DR_WORKERS= | awk -F'=' '{print $2}')
+                echo $S3_PREFIX_FOR_ANALYSIS | grep -q \$DR_WORLD_NAME
+                if [[ $? -eq 0 ]];then
+                  S3_PREFIX_FOR_ANALYSIS=$(echo $S3_PREFIX_FOR_ANALYSIS | sed "s|\$DR_WORLD_NAME|${DEEPRACER_TRACK}|")
+                fi
+                sed -i "s|DR_LOCAL_S3_MODEL_PREFIX|${S3_PREFIX_FOR_ANALYSIS}|" import_from_s3.py
+                sed -i "s|DEEPRACER_S3_URI|${DEEPRACER_S3_URI}|" import_from_s3.py
+                sed -i "s|DEEPRACER_TRACK|${DEEPRACER_TRACK}|" import_from_s3.py
+                sed -i "s|S3_REGION|${DEEPRACER_REGION}|" import_from_s3.py
+                sed -i "s|DR_LOCAL_S3_MODEL_PREFIX|${S3_PREFIX_FOR_ANALYSIS}|" Training_and_Evaluation_Overview.py
+                sed -i "s|DEEPRACER_S3_URI|${DEEPRACER_S3_URI}|" Training_and_Evaluation_Overview.py
+                sed -i "s|DEEPRACER_WORKERS|${DEEPRACER_WORKERS}|" Training_and_Evaluation_Overview.py
 
----
-### MENU
-You can also use the menu.sh to start training, modify config files, and run scripts.
+                ANALYSIS_ID=$(docker ps --filter name=deepracer-analysis --format "{{.ID}}")
+                docker cp import_from_s3.py $ANALYSIS_ID:/workspace/
+                docker exec $ANALYSIS_ID jupytext --to notebook import_from_s3.py
+                docker cp Training_progress.py $ANALYSIS_ID:/workspace/
+                docker exec $ANALYSIS_ID jupytext --to notebook Training_progress.py
+                docker cp Quintiles.py $ANALYSIS_ID:/workspace/
+                docker exec $ANALYSIS_ID jupytext --to notebook Quintiles.py
+                docker cp Heatmap.py $ANALYSIS_ID:/workspace/
+                docker exec $ANALYSIS_ID jupytext --to notebook Heatmap.py
+                docker cp Data_tables.py $ANALYSIS_ID:/workspace/
+                docker exec $ANALYSIS_ID jupytext --to notebook Data_tables.py
+                docker cp Path_for_complete_laps.py $ANALYSIS_ID:/workspace/
+                docker exec $ANALYSIS_ID jupytext --to notebook Path_for_complete_laps.py
+                docker cp Training_and_Evaluation_Overview.py $ANALYSIS_ID:/workspace/
+                docker exec $ANALYSIS_ID jupytext --to notebook Training_and_Evaluation_Overview.py
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/import_from_s3.py:
+              content: |
+                # ---
+                # jupyter:
+                #   jupytext:
+                #     formats: ipynb,py:light
+                #     text_representation:
+                #       extension: .py
+                #       format_name: light
+                #       format_version: '1.5'
+                #       jupytext_version: 1.14.1
+                #   kernelspec:
+                #     display_name: Python 3 (ipykernel)
+                #     language: python
+                #     name: python3
+                # ---
 
-Simply run:
-`./menu.sh` or `python3 menu.py`
+                # +
+                #Import block to bring in dependencies
+                import pandas as pd
+                import matplotlib.pyplot as plt
+                from pprint import pprint
 
-![menu showing how to start deepracer on the spot](media/menu.png)
+                from deepracer.tracks import TrackIO, Track
+                from deepracer.tracks.track_utils import track_breakdown, track_meta
+                from deepracer.logs import \
+                    SimulationLogsIO as slio, \
+                    NewRewardUtils as nr, \
+                    AnalysisUtils as au, \
+                    PlottingUtils as pu, \
+                    ActionBreakdownUtils as abu, \
+                    DeepRacerLog, \
+                    S3FileHandler
 
-### OTHER COMMANDS:
+                # Ignore deprecation warnings we have no power over
+                import warnings
+                warnings.filterwarnings('ignore')
+                # -
 
-### Stopping training
+                # +
+                #Get logs from S3
+                fh = S3FileHandler(bucket="DEEPRACER_S3_URI",
+                                    prefix="DR_LOCAL_S3_MODEL_PREFIX", region="S3_REGION")
 
-The script stop-training.sh executes 'safe termination' of training by updated the CloudFroamtion stack to gracefully complete the training in 2 minutes time from when the script is ran. This command works for both standard and spot instances. The scripts takes one parameter, the name of the stack used to create the instance (this is the same as the second parameter used to create the instance with either create-standard-instance.sh or create-spot-instance.sh commands). For example: `./stop-instance.sh my-instance-stack-name` . You can also go to cloudformation and manually delete the stack, but if you do that you wont' get graceful termination (i.e. upload of model to DeepRacer Console or S3 upload to your 'upload' bucket)
+                #Attempt to load logs but catch error if training not yet far enough advanced
+                try:
+                  log = DeepRacerLog(filehandler=fh)
+                  log.load_training_trace()
+                  df = log.dataframe()
+                  simulation_agg = au.simulation_agg(df, secondgroup="unique_episode")
+                  complete_ones = simulation_agg[simulation_agg['progress']==100]
+                  %store df
+                  %store simulation_agg
+                  %store complete_ones
+                except Exception:
+                  print("Logs are not yet available.  It typically takes 25 minutes from the start of training for them to be available.")
+                tu = TrackIO()
+                try:
+                  track: Track = tu.load_track("DEEPRACER_TRACK")
+                  %store track
+                except Exception:
+                  print("Track not currently included in the solution.  Copy track into the tracks folder or check you're using the latest deepracer-analysis image.")
+                # -
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Training_progress.py:     
+              content: |
+                # ---
+                # jupyter:
+                #   jupytext:
+                #     formats: ipynb,py:light
+                #     text_representation:
+                #       extension: .py
+                #       format_name: light
+                #       format_version: '1.5'
+                #       jupytext_version: 1.14.1
+                #   kernelspec:
+                #     display_name: Python 3 (ipykernel)
+                #     language: python
+                #     name: python3
+                # ---
 
-### Adding additional IP addresses to security group ingress and NACLs
+                # +
+                #Import block to bring in dependencies
+                import pandas as pd
+                import matplotlib.pyplot as plt
+                from pprint import pprint
 
-The script add-access.sh adds an additional IP address to the security group ingress, it also add an NACL entry. Use:  `./add-access.sh <base resources stack name> <stack name> <IP address>`
+                from deepracer.tracks import TrackIO, Track
+                from deepracer.tracks.track_utils import track_breakdown, track_meta
+                from deepracer.logs import \
+                    SimulationLogsIO as slio, \
+                    NewRewardUtils as nr, \
+                    AnalysisUtils as au, \
+                    PlottingUtils as pu, \
+                    ActionBreakdownUtils as abu, \
+                    DeepRacerLog, \
+                    S3FileHandler
 
-### Subscribing email addresses to the 'spot instance interruption notification topic' (the topic is created by the base resources stack)
+                %store -r simulation_agg
+                %store -r df
+                %store -r track
+                %store -r complete_ones
 
-The script add-interruption-notification-subscription.sh script adds an email address to the 'interruption notification topic.'
-Use: `./add-interruption-notification-subscription.sh <base resources stack name> <stack name> <email address>`
+                # Ignore deprecation warnings we have no power over
+                import warnings
+                warnings.filterwarnings('ignore')
+                # -
 
-Note, it is also possible to interactively create a subscription on the SNS web console. Adding an email subscription results in an email, with a confirmation link in it, being sent to the email address. Not published message is forwarded to the email prior to the user having confirmed the subscription (by clicking on the link in the original subscription notification email).
+                # ## Training Progress Graphs
 
-## Image Builder
+                # +
+                try:
+                  au.analyze_training_progress(simulation_agg, title='Training progress')
+                  au.scatter_aggregates(simulation_agg, 'Stats for all laps')
+                  complete_ones = simulation_agg[simulation_agg['progress']==100]
+                  if complete_ones.shape[0] > 0:
+                    au.scatter_aggregates(complete_ones, 'Stats for complete laps')
+                  else:
+                    print('Stats for complete laps - No complete laps yet.')
+                  try:
+                    au.analyze_training_progress(complete_ones, title='Complete lap training progress')
+                  except Exception:
+                    print('Complete lap training progress - No complete laps yet.')
+                except Exception:
+                  print("Logs are not yet available.  It typically takes 25 minutes from the start of training for them to be available.")
+                # -
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Quintiles.py:     
+              content: |
+                # ---
+                # jupyter:
+                #   jupytext:
+                #     formats: ipynb,py:light
+                #     text_representation:
+                #       extension: .py
+                #       format_name: light
+                #       format_version: '1.5'
+                #       jupytext_version: 1.14.1
+                #   kernelspec:
+                #     display_name: Python 3 (ipykernel)
+                #     language: python
+                #     name: python3
+                # ---
 
-The script create-image-builder.sh creates an EC2 Image Builder Pipeline that creates a new AMI on the 1st of each month. The resources used to create the images include the community git repository content for deep racing. The drivers/containers are installed and the image is rebooted. This speeds up the instance creation, as the software is preinstalled. create-image-builder.sh takes two parameters, the resources stack name and a stack name for the image builder provisioned template. The resources created are defined in the image-builder.yaml template.
+                # +
+                #Import block to bring in dependencies
+                import pandas as pd
+                import matplotlib.pyplot as plt
+                from pprint import pprint
 
-Before running this script please ensure you're using the latest version of the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html#getting-started-install-instructions), as this is required to unblock public AMI sharing, otherwise you won't be able to use the image that is created for your training.
+                from deepracer.tracks import TrackIO, Track
+                from deepracer.tracks.track_utils import track_breakdown, track_meta
+                from deepracer.logs import \
+                    SimulationLogsIO as slio, \
+                    NewRewardUtils as nr, \
+                    AnalysisUtils as au, \
+                    PlottingUtils as pu, \
+                    ActionBreakdownUtils as abu, \
+                    DeepRacerLog, \
+                    S3FileHandler
 
-The image builder pipeline is invoked at mid-night on the 1st of the month. To avoid waiting for the first AMI to be created, the pipeline can be invoked interactively after it has been created by the provisioned template.  Alternatively to avoid the costs of a monthly build (approx $1/region/month where you deploy Image Builder) after deployment you could modify the Image Builder pipeline to run manually in the console, and then trigger it when you want a new build (note - due to Docker cert issues AMIs must be less than 3 months old, otherwise containers don't start, so you should trigger a build at least every 3 months).  Once you are using your own AMIs you must replace the standard AWS Account number (747447086422) in `create-spot-instance.sh` and `create-standard-instance.sh` with your own AWS Account number that hosts the AMIs, otherwise you'll likely get an error as no AMI will be found.
+                %store -r simulation_agg
+                %store -r df
+                %store -r track
+                %store -r complete_ones
 
-The image builder logs are written into the s3 bucket provided by the 'base resources'. The logs are subject to s3 lifecycle expiration.
+                # Ignore deprecation warnings we have no power over
+                import warnings
+                warnings.filterwarnings('ignore')
+                # -
 
-Old created AMIs are deleted daily by the Image builder lifecycle policy.
+                # ## Training Progress Graphs
 
-To use cd into scripts directory and run `./create-image-builder.sh <base resources stack name> <stack name>`
+                # +
+                try:
+                  complete_ones = simulation_agg[simulation_agg['progress']==100]
+                  au.scatter_by_groups(simulation_agg, title='Quintiles')
+                  au.scatter_by_groups(complete_ones, title='Complete Lap Quintiles')
+                except Exception:
+                  print("Logs are not yet available.  It typically takes 25 minutes from the start of training for them to be available.")
+                # -
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Heatmap.py:     
+              content: |
+                # ---
+                # jupyter:
+                #   jupytext:
+                #     formats: ipynb,py:light
+                #     text_representation:
+                #       extension: .py
+                #       format_name: light
+                #       format_version: '1.5'
+                #       jupytext_version: 1.14.1
+                #   kernelspec:
+                #     display_name: Python 3 (ipykernel)
+                #     language: python
+                #     name: python3
+                # ---
 
-## delete-base-resources.sh
+                # +
+                #Import block to bring in dependencies
+                import pandas as pd
+                import matplotlib.pyplot as plt
+                from pprint import pprint
 
-This script can be used to delete the resources created by the create-base-resources.sh script (and associated template). Please be aware that the resource deletion will fail if the S3 bucket created is not empty. delete-base-resources.sh takes a single mandatory parameter, the stack-name, same value as above.
+                from deepracer.tracks import TrackIO, Track
+                from deepracer.tracks.track_utils import track_breakdown, track_meta
+                from deepracer.logs import \
+                    SimulationLogsIO as slio, \
+                    NewRewardUtils as nr, \
+                    AnalysisUtils as au, \
+                    PlottingUtils as pu, \
+                    ActionBreakdownUtils as abu, \
+                    DeepRacerLog, \
+                    S3FileHandler
 
-## Other useful links:
+                %store -r simulation_agg
+                %store -r df
+                %store -r track
+                %store -r complete_ones
 
-<li>Track names for DR_WORLD_NAME: https://github.com/aws-deepracer-community/deepracer-race-data/tree/main/raw_data/tracks
-<li>Racing types (head to head, time trial, object avoidance) for DR_RACE_TYPE: https://aws-deepracer-community.github.io/deepracer-for-cloud/reference.html
-<li>Pull new sagemaker/robomaker docker images: https://github.com/aws-deepracer-community/deepracer-simapp
+                # Ignore deprecation warnings we have no power over
+                import warnings
+                warnings.filterwarnings('ignore')
+                # -
 
-## FAQ
+                # ## Training Heatmap
 
-If you have an issue with training, the best first place to check is CloudFormation "Events" tab to see if there are any errors related to deploying your stack.
+                # +
+                try:
+                  pu.plot_track(df, track)
+                except Exception:
+                  print("Logs are not yet available.  It typically takes 25 minutes from the start of training for them to be available.")
+                # -
 
-| Issue | Description |
-| --- | --- |
-| The maximum number of network acl entries has been reached | <li>From AWS console, navigate to the VPC service console and select "Your VPCs"</li> <li>Click the ACL in your VPC that was created by your base resources stack </li>  <li>Select the "inbound rules" tab and you may edit the inbound rules to remove 2-3 rules from this section that are higher on the list and end in port 32 with a non-rounded number. This will remove access from some existing IPs.</li> <li>Now run scripts/add-access.sh script from CloudShell to add your IP to this inbound rules list and you should be able to access the instance. </li> <li> Alternatively, you may also just request a higher quota. Navigate to "service quota" service, search for "VPC" -> "ACL" -> "Rules per network ACL" and update from 20 to a larger number such as 40 </li>|
-| Exception when checking for DEEPRACER_JOB_TYPE_ENV 'Local' is not valid DeepRacerJobType | <li>This is an error from DRFC and should not affect your training. If you see it in your logs you can ignore it. </li> |
-| S3 failed, retry count 1/5: An error occurred (404) when calling the HeadObject operation: Not Found | <li>This is an error from DRFC and should not affect your training. If you see it in your logs you can ignore it. </li> |
-| model imported to console says track is reInvent:2018 | <li>This is a bug on AWS side as the import process does not check the track the model was trained on. This is purely a visual issue and does not impact your model. You can continue to train/evaluate on any track you choose. </li> |
-| Import model from console to DOTS | <li>From DeepRacer Console, select the model you wish to move to DOTS. In the "Actions" dropdown, select "copy to s3", "create a new bucket", and include the "model" and "logs". Copy the s3 location it will be copied to and hit submit.</li><li>Launch CloudShell and copy this model to your base stack S3 bucket using this command and substitute in your bucket names and model names:  `aws s3 cp "s3://aws-deepracer-assets-b9436ddf-db0a-4f63/my-deepracer-console-model-name/Mon, 17 Jul 2023 17:53:33 GMT/" "s3://my-base-bucket/my-new-model-name" --recursive` </li><li>Your model can now be trained on top of in DOTS by setting the `DR_LOCAL_S3_PRETRAINED_PREFIX` variable to the name of your model. </li> |
-| How do I train continuous/SAC instead of discrete action space? | <li>Rename the two example files in custom-files directory "hyperparameters_sac.json" to "hyperparameters.json" and "model_metadata_sac.json" to "model_metadata.json" </li> |
-| What if multiple people use the same AWS sandbox? | <li>CloudShell sessions are unique to each user, and each user can clone this repo and create one base-resource stack and as many trainings as they desire. To share models amongst the same account, copy the model from one s3 bucket to the other. </li> |
-| Quota increase hasn't been assigned | AWS quota increases are handled by AWS support staff, only the request is programmatic.  It's likely the AWS Support team will respond to your request by asking for further information.  It is recommended you respond with 'I'm utilizing this account to participate in AWS DeepRacer.  In the DeepRacer console training for DeepRacer costs $3.50/hour.  In order to reduce my AWS bill I want to use DeepRacer on the Spot, an AWS DeepRacer community developed solution - https://github.com/aws-deepracer-community/deepracer-on-the-spot, which will allow me to training at up to 1/10th the cost of the console. In order to do this I need access to g4dn spot and on demand instances, as per my request.  Therefore please kindly increase my quota.'.  You may want to preempt the question and add this text to the support ticket straight away, unfortunately the code cannot do this for you as API access to update support tickets is only available to AWS Premium Support customers (which starts at $15k/month).  |
-| My model didn't appear in the console after training completed or import failed | <li> This can occassionally happen if the model upload didn't complete before the instance was terminated. Go into the AWS DeepRacer console and import manually following the instructions in the 'Your Models' section after pressing the 'Import Model' button.  You should find your model in the S3 upload folder specified in run.env, or if that process didn't complete you'll find it in the S3 folder specific for training in run.env </li> |
-| I want to import into the AWS Console models from when my Spot instance was interrupted | <li> The service is configured to only automatically upload models at the end of training, not at the point of Spot interruption. If you'd like to manually import your model from the point of spot interruption then go into the AWS DeepRacer console and import manually following the instructions in the 'Your Models' section after pressing the 'Import Model' button.  You should find your model in the S3 upload folder specified in run.env, or if that process didn't complete you'll find it in the S3 folder specific for training in run.env </li> |
-| My stack doesn't deploy and I get the error 'No export named base-DeepRacerServiceRole found' when trying to start my training | <li> The functionality to automatically add your completed model to the AWS DeepRacer console required an update to the base stack.  Re-run create-base-resources.sh to update your base stack and try again </li> |
-| My stack doesn't deploy and I get null AMI error when trying to start my training | <li> You're using a region where there isn't a provided AMI. Use the create-image-builder.sh script in the scripts folder to create an AMI in the region you want to train in </li> |
+                # ## Waypoint Map
+
+                # +
+                try:
+                  pu.plot_trackpoints(track)
+                except Exception:
+                  print("Logs are not yet available.  It typically takes 25 minutes from the start of training for them to be available.")
+                # -
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Data_tables.py:     
+              content: |
+                # ---
+                # jupyter:
+                #   jupytext:
+                #     formats: ipynb,py:light
+                #     text_representation:
+                #       extension: .py
+                #       format_name: light
+                #       format_version: '1.5'
+                #       jupytext_version: 1.14.1
+                #   kernelspec:
+                #     display_name: Python 3 (ipykernel)
+                #     language: python
+                #     name: python3
+                # ---
+
+                # +
+                #Import block to bring in dependencies
+                import pandas as pd
+                import matplotlib.pyplot as plt
+                from pprint import pprint
+
+                from deepracer.tracks import TrackIO, Track
+                from deepracer.tracks.track_utils import track_breakdown, track_meta
+                from deepracer.logs import \
+                    SimulationLogsIO as slio, \
+                    NewRewardUtils as nr, \
+                    AnalysisUtils as au, \
+                    PlottingUtils as pu, \
+                    ActionBreakdownUtils as abu, \
+                    DeepRacerLog, \
+                    S3FileHandler
+
+                %store -r simulation_agg
+                %store -r df
+                %store -r track
+                %store -r complete_ones
+
+                # Ignore deprecation warnings we have no power over
+                import warnings
+                warnings.filterwarnings('ignore')
+                # -
+                
+                # ## Data in tables
+
+                # ## Ten best rewarded episodes in the training
+                
+                # +
+                simulation_agg.nlargest(10, 'reward')
+                # -
+
+                # ## Ten fastest complete laps in the training
+
+                # +
+                complete_ones.nsmallest(10, 'time')
+                # -
+
+                # ## Ten fastest complete laps from the start/finish line in training
+
+                # +
+                complete_ones_from_start = complete_ones[complete_ones['start_at']==1]
+                complete_ones_from_start.nsmallest(10, 'time')
+                # -
+
+                # ## Ten fastest incomplete laps in the training
+
+                # +
+                simulation_agg.nsmallest(10, 'time_if_complete')
+                # -
+
+                # ## Ten best rewarded complete laps in the training
+
+                # +
+                complete_ones.nlargest(10, 'reward')
+                # -
+
+                # ## Ten most progressed episodes in the training
+
+                # +
+                simulation_agg.nlargest(10, 'progress')
+                # -
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Path_for_complete_laps.py:     
+              content: |
+                # ---
+                # jupyter:
+                #   jupytext:
+                #     formats: ipynb,py:light
+                #     text_representation:
+                #       extension: .py
+                #       format_name: light
+                #       format_version: '1.5'
+                #       jupytext_version: 1.14.1
+                #   kernelspec:
+                #     display_name: Python 3 (ipykernel)
+                #     language: python
+                #     name: python3
+                # ---
+
+                # +
+                #Import block to bring in dependencies
+                import pandas as pd
+                import matplotlib.pyplot as plt
+                from pprint import pprint
+
+                from deepracer.tracks import TrackIO, Track
+                from deepracer.tracks.track_utils import track_breakdown, track_meta
+                from deepracer.logs import \
+                    SimulationLogsIO as slio, \
+                    NewRewardUtils as nr, \
+                    AnalysisUtils as au, \
+                    PlottingUtils as pu, \
+                    ActionBreakdownUtils as abu, \
+                    DeepRacerLog, \
+                    S3FileHandler
+
+                %store -r simulation_agg
+                %store -r df
+                %store -r track
+                %store -r complete_ones
+
+                # Ignore deprecation warnings we have no power over
+                import warnings
+                warnings.filterwarnings('ignore')
+                print("Number of completed laps so far:", len(complete_ones))
+                # -
+
+                # ## Path taken for quickest complete laps
+
+                # +
+                episodes_to_plot = complete_ones.nsmallest(5, 'time')
+                pu.plot_selected_laps(episodes_to_plot, df, track, section_to_plot="unique_episode")
+                # -
+
+                # ## Path taken for highest rewarded complete laps
+                
+                # +
+                episodes_to_plot = complete_ones.nlargest(5,'reward')
+                pu.plot_selected_laps(episodes_to_plot, df, track, section_to_plot="unique_episode")
+                # -
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/deepracer-for-cloud/Training_and_Evaluation_Overview.py:     
+              content: |
+                # ---
+                # jupyter:
+                #   jupytext:
+                #     formats: ipynb,py:light
+                #     text_representation:
+                #       extension: .py
+                #       format_name: light
+                #       format_version: '1.5'
+                #       jupytext_version: 1.14.1
+                #   kernelspec:
+                #     display_name: Python 3 (ipykernel)
+                #     language: python
+                #     name: python3
+                # ---
+
+                # +
+                #Import block to bring in dependencies
+                from deepracer.logs import metrics
+                import matplotlib.pyplot as plt
+                import numpy as np
+                import pandas as pd
+
+                # Ignore deprecation warnings we have no power over
+                import warnings
+                warnings.filterwarnings('ignore')
+                # -
+
+                # ## Completion of Training and Evaluation per Iteration
+
+                # +
+                try:
+                  tm = metrics.TrainingMetrics("DEEPRACER_S3_URI")
+                  tm.addRound("DR_LOCAL_S3_MODEL_PREFIX", training_round=1, workers=DEEPRACER_WORKERS)
+                  results = tm.plotProgress(method=['median','mean'], rolling_average=1, figsize=(20,5))
+                except Exception:
+                  print("Logs are not yet available.  It typically takes 25 minutes from the start of training for them to be available.")
+                # -
+
+                # ## Best Lap Progression - is your model getting faster?
+                
+                # +
+                try:
+                  train=tm.getTraining()
+                  ev=tm.getEvaluation()
+                  train_complete_lr = train[(train['round']>(0)) & (train['complete']==1)]
+                  eval_complete_lr = ev[(ev['round']>(0)) & (ev['complete']==1)]
+                  series = []
+                  if not train_complete_lr.empty:
+                      series.append(('train_time', 'Training', 'blue'))
+                  if not eval_complete_lr.empty:
+                      series.append(('eval_time', 'Evaluation', 'orange'))
+                  rolling_lap = tm.plotProgress(method=['min', 'mean'], rolling_average=15, figsize=(20, 5),
+                                                series=series,
+                                                title="Laptime for completed laps over last 15 episodes ({}).", ylabel="Laptime",
+                                                completedLapsOnly=True, grid=True)                  
+                  plt.figure(figsize=(15,5))
+                  plt.title('Best lap progression')
+                  plt.scatter(train_complete_lr['master_iteration'],train_complete_lr['time'],alpha=0.4)
+                  plt.scatter(eval_complete_lr['master_iteration'],eval_complete_lr['time'],alpha=0.4)
+                  plt.show()
+                except Exception:
+                  print("Logs are not yet available.  It typically takes 25 minutes from the start of training for them to be available.")
+                # -
+
+                # ## Complete Lap Training and Evaluation Percentiles - All
+
+                # +
+                eval_percentiles = ["Evaluation", eval_complete_lr['time'].quantile(0.01), eval_complete_lr['time'].quantile(0.1),
+                                    eval_complete_lr['time'].quantile(0.25), eval_complete_lr['time'].quantile(0.5),
+                                    eval_complete_lr['time'].quantile(0.75)]
+                train_percentiles = ["Training", train_complete_lr['time'].quantile(0.01), train_complete_lr['time'].quantile(0.1),
+                                     train_complete_lr['time'].quantile(0.25), train_complete_lr['time'].quantile(0.5),
+                                     train_complete_lr['time'].quantile(0.75)]
+                percentile = pd.DataFrame(
+                    columns=['Description', '1st Percentile', '10th Percentile', '25th Percentile', '50th Percentile',
+                             '75th Percentile'])
+                percentile.loc[0] = eval_percentiles
+                percentile.loc[1] = train_percentiles
+                percentile.style \
+                  .format(precision=3)
+                # -
+
+                # ## Complete Lap Training and Evaluation Percentiles - Last 20 Evaluations, Last 40 Training Episodes
+
+                # +
+                train_complete_lr2=train_complete_lr.nlargest(40,['start_time'])
+                eval_complete_lr2=eval_complete_lr.nlargest(20,['start_time'])
+                eval_percentiles2 = ["Evaluation", eval_complete_lr2['time'].quantile(0.01), eval_complete_lr2['time'].quantile(0.1),
+                                     eval_complete_lr2['time'].quantile(0.25), eval_complete_lr2['time'].quantile(0.5),
+                                     eval_complete_lr2['time'].quantile(0.75)]
+                train_percentiles2 = ["Training", train_complete_lr2['time'].quantile(0.01), train_complete_lr2['time'].quantile(0.1),
+                                      train_complete_lr2['time'].quantile(0.25), train_complete_lr2['time'].quantile(0.5),
+                                      train_complete_lr2['time'].quantile(0.75)]
+                percentile2 = pd.DataFrame(
+                    columns=['Description', '1st Percentile', '10th Percentile', '25th Percentile', '50th Percentile',
+                             '75th Percentile'])
+                percentile2.loc[0] = eval_percentiles2
+                percentile2.loc[1] = train_percentiles2
+                percentile2.style \
+                  .format(precision=3)
+                # -
+              mode : "000755"
+              owner: ubuntu
+              group: ubuntu
+    Properties:
+      SecurityGroupIds:
+        - !ImportValue
+          'Fn::Sub': '${ResourcesStackName}-SecurityGroup'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          /usr/local/bin/cfn-init --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
+          bash
+          sudo su ubuntu
+          cd /home/ubuntu/deepracer-for-cloud/
+          source bin/activate.sh
+          source /etc/profile.d/dots_vars.sh
+
+  TerminationCronExpression:
+    Type: Custom::TerminationCronExpression
+    DependsOn:
+      - Instance
+    Properties:
+      ServiceToken:
+        !ImportValue
+        'Fn::Sub': '${ResourcesStackName}-FutureTimeCronExpressionLambdaArn'
+      ttl: !Ref TimeToLiveInMinutes
+
+  TerminationTrigger:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: !GetAtt TerminationCronExpression.cron_expression
+      State: ENABLED
+      Targets:
+        - Arn:
+            !ImportValue
+            'Fn::Sub': '${ResourcesStackName}-TerminationLambdaArn'
+          Id: TerminateInstance
+          Input: !Sub '{"instance": "${Instance}", "stack": "${AWS::StackName}"}'
+
+  TerminatePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        !ImportValue
+        'Fn::Sub': '${ResourcesStackName}-TerminationLambdaArn'
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt TerminationTrigger.Arn
