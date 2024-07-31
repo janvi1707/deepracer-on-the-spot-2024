@@ -79,7 +79,7 @@ def reward_function(params):
     reward=reward+ steering_reward
     if direction_diff <=10.0:
         reward+=10.0
-    if next in straight_waypoints:
+    if next in straight_waypoints or next in basic_left or next in basic_right:
         if params['speed'] >=2.8:
             reward+=5
         if params['speed'] >=3:
