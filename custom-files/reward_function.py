@@ -27,6 +27,7 @@ def reward_function(params):
     basic_left=[1,2,3,4,23,24,25,26,27,28,29,30,56,57,58,59,87,88,89,90,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,141,142,143,144,145,146,147,148,149,150,151,152,153,154]
     basic_right=[60,61,62,83,84,85,86]
     curve_points= left_waypoints + right_waypoints
+    almost_straight= basic_left + basic_right
     # Calculate the direction of the center line based on the closest waypoints
     waypoints_length= len(waypoints)
     prev = int(closest_waypoints[0])
@@ -73,8 +74,7 @@ def reward_function(params):
         steering_reward = 160*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
 
     reward=reward+ steering_reward
-    if next in straight_waypoints or next in basic_left or next in basic_right:
-        #125
+    if next in straight_waypoints or next in almost_straight:
         if params['speed'] >=2.8:
             reward+=15
         if params['speed'] >=3:
@@ -92,7 +92,6 @@ def reward_function(params):
         if params['speed'] >=4.4:
             reward+=15
     elif next not in curve_points:
-        #130
         if params['speed'] >=2.0:
             reward+=20
         if params['speed'] >=2.2:
