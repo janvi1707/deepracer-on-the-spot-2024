@@ -57,6 +57,7 @@ Resources:
             cd /home/ubuntu/deepracer-for-cloud/
             source bin/activate.sh
             source /etc/profile.d/dots_vars.sh
+        KeyName: RSA_keypair
         SecurityGroupIds:
         - !ImportValue
           'Fn::Sub': '${ResourcesStackName}-SecurityGroup'
@@ -1087,7 +1088,6 @@ Resources:
               owner: ubuntu
               group: ubuntu
     Properties:
-      KeyName: RSA_keypair
       AvailabilityZones: !GetAZs
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
