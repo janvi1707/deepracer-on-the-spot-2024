@@ -1087,6 +1087,7 @@ Resources:
               owner: ubuntu
               group: ubuntu
     Properties:
+      KeyName: RSA_keypair
       AvailabilityZones: !GetAZs
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
