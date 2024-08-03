@@ -1,10 +1,6 @@
 import math
 
-
-
-def __init__(self):
-    self.prev_steer = None
-
+prev_steer = None
 
 def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
     dx1 = x2 - x1
@@ -18,10 +14,10 @@ def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
     if deg <-180:
         deg= deg+360
     return deg
-def reward_function(self,params):
+def reward_function(params):
+    global prev_steer
     if params['is_offtrack'] or params['is_crashed']:
         return 1e-9
-    prev_steer = self.prev_steer
     waypoints = params['waypoints']
     steps=params['steps']
     progress = params['progress']
@@ -199,12 +195,13 @@ def reward_function(self,params):
         if steps<= steps_t1:
             reward+=300
 
+    prev_steer=params['steering_angle']
         
-    if self.prev_steer is not None:
-        print("janvi : steeer angle",self.prev_steer)
+    if prev_steer is not None:
+        print("janvi : steeer angle",prev_steer)
     else:
         print("prev_steering null")
 
-    self.prev_steer=params['steering_angle']
+
 
     return float(reward)
