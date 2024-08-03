@@ -31,17 +31,17 @@ def reward_function(params):
     if(resp[1]<-5 and is_left_of_center):
         dfc_reward=100;
         dfc = track_width * (abs(resp[1])/50)
-        dfc = 500 * dfc
+        dfc = 500/(1 + 100*abs(distance_from_center - dfc))
         dfc_reward = dfc_reward + dfc
     elif(resp[1]>5 and not is_left_of_center):
         dfc_reward=100;
         dfc = track_width * (abs(resp[1])/50)
-        dfc = 500 * dfc
+        dfc = 500/(1 + 100*abs(distance_from_center - dfc))
         dfc_reward = dfc_reward + dfc
     elif(abs(resp[1])>5):
         dfc_reward=1e-9;
     else:
-        dfc = 500 * ((track_width-distance_from_center)/track_width);
+        dfc = 500/(1 + 100*(distance_from_center - track_width));
         dfc_reward = dfc_reward + dfc;
 
     
@@ -155,3 +155,5 @@ def test():
 
         ax.annotate(str(i)+ "/" +str(round(resp[1])), (x1[i], y1[i]))
     plt.show()
+
+
