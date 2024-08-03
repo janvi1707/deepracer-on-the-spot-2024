@@ -7,7 +7,7 @@ def reward_function(params):
         return 1e-9
     waypoints = params['waypoints']
     closest_waypoints = params['closest_waypoints']
-    track_width = int(params['track_width'])/2
+    track_width = params['track_width']/2
     heading = params['heading']
     speed = params['speed']
     steering_angle = params['steering_angle']
@@ -19,7 +19,7 @@ def reward_function(params):
 
     
     resp = fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,heading);
-    
+    print("Required Steering : {}, Direction : {}".format(resp[0],resp[1]))
     direction_diff = abs(round(resp[0])-steering_angle)
     if direction_diff>180:
         direction_diff = 360-direction_diff;
@@ -87,23 +87,25 @@ def get_abs_speed(diff):
 
 def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,heading):
     w_len = len(waypoints);
-    start = int(closest_waypoints[0]);
-    end = int(closest_waypoints[0]+20);
-    resp = int(closest_waypoints[1])
+    start = int(closest_waypoints[1]);
+    end = int(closest_waypoints[0])+20;
+    resp = int(closest_waypoints[1]);
+    
     while(start<=end):
         mid = (start+end)//2
-        mid_wp = waypoints[mid%w_len];
+        mid_wp = waypoints[(w_len+mid)%w_len];
 
-        mid_x,mid_y = (x+waypoints[(end+w_len)%w_len][0])/2,(y+waypoints[(w_len+ end)%w_len][1])/2;
+        mid_x,mid_y = (x+waypoints[(end+w_len)%w_len][0])/2,(y+waypoints[(w_len+end)%w_len][1])/2;
         dist = math.sqrt((mid_x-mid_wp[0])**2 + (mid_y-mid_wp[1])**2);
 
-        if(dist<track_width):
+        if(dist<=track_width):
             resp = mid;
             start = mid+1;
         else:
             end = mid - 1;
+    print("Resp : {}".format(resp));
     end = waypoints[(w_len+resp)%w_len];
-    start = waypoints[int(closest_waypoints[0])];
+    start = waypoints[closest_waypoints[0]];
     
     track_direction = math.atan2(end[1]-y,end[0]-x)
     track_direction = math.degrees(track_direction)
