@@ -1,5 +1,12 @@
 import math
 
+
+
+def _init_(self):
+        self.prev_steer = None
+
+
+
 def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
     dx1 = x2 - x1
     dy1 = y2 - y1
@@ -12,9 +19,10 @@ def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
     if deg <-180:
         deg= deg+360
     return deg
-def reward_function(params):
+def reward_function(self,params):
     if params['is_offtrack'] or params['is_crashed']:
         return 1e-9
+    prev_steer = self.prev_steer
     waypoints = params['waypoints']
     steps=params['steps']
     progress = params['progress']
@@ -67,11 +75,19 @@ def reward_function(params):
         total_angle=-30
     if next ==1 or prev==1 or (next+1)%waypoints_length ==1 or (next+2)%waypoints_length ==1 or (next+3)%waypoints_length ==1 or (next+4)%waypoints_length ==1 or (next+5)%waypoints_length ==1 or (next+6)%waypoints_length ==1 or (next+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
         total_angle = 0
+
     steering_reward=1e-4
-    if next not in curve_points:
-        steering_reward = 160*math.tanh(10/(1+abs(straight_direction_diff - total_angle)))
+    if prev_steer is not None:
+        if abs(prev_steer-params['steering_angle']) <= 8:
+            if next not in curve_points:
+                steering_reward = 160*math.tanh(10/(1+abs(straight_direction_diff - total_angle)))
+            else:
+                steering_reward = 160*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
     else:
-        steering_reward = 160*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
+        if next not in curve_points:
+            steering_reward = 160*math.tanh(10/(1+abs(straight_direction_diff - total_angle)))
+        else:
+            steering_reward = 160*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
 
     reward=reward+ steering_reward
     if next in straight_waypoints or next in almost_straight:
@@ -183,4 +199,9 @@ def reward_function(params):
             reward+=300
         if steps<= steps_t1:
             reward+=300
+    if self.prev_steer is not None:
+        print(self.prev_steer)
+
+    self.prev_steer=params['steering_angle']
+
     return float(reward)
