@@ -2,7 +2,7 @@ import math
 
 
 
-def _init_(self):
+def __init__(self):
     self.prev_steer = None
 
 
