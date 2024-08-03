@@ -24,7 +24,7 @@ def reward_function(params):
     if direction_diff>180:
         direction_diff = 360-direction_diff;
 
-     print("Required steering : {}, Required Track direction : {}, Direction diff : {}".format(resp[0],resp[1],direction_diff))
+    print("Required steering : {}, Required Track direction : {}, Direction diff : {}".format(resp[0],resp[1],direction_diff))
 
     dfc_reward = 100;
     if(resp[1]<-5 and is_left_of_center):
