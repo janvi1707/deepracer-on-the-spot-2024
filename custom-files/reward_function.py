@@ -7,7 +7,7 @@ def reward_function(params):
         return 1e-9
     waypoints = params['waypoints']
     closest_waypoints = params['closest_waypoints']
-    track_width = params['track_width']/2
+    track_width = int(params['track_width'])/2
     heading = params['heading']
     speed = params['speed']
     steering_angle = params['steering_angle']
@@ -27,6 +27,7 @@ def reward_function(params):
     print("Required steering : {}, Required Track direction : {}, Direction diff : {}".format(resp[0],resp[1],direction_diff))
 
     dfc_reward = 100;
+    
     if(resp[1]<-5 and is_left_of_center):
         dfc_reward=100;
         dfc = track_width * (abs(resp[1])/50)
@@ -127,3 +128,30 @@ def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,he
     track_direction = direction_diff;
 
     return [req_steer, track_direction]
+
+
+
+def test():    
+    import numpy as np
+    data = np.load('data.npy')
+
+    x1 = [i[0] for i in data]
+    y1 = [i[1] for i in data]
+    
+    waypoints = [[i[0],i[1]] for i in data]
+    
+    track_width = 1.07/2;
+    print(track_width);
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.scatter(x1, y1)
+    for i in range(0,len(x1)):
+        end = waypoints[(i+1)%len(waypoints)]
+        start = waypoints[i];
+        track_direction = math.atan2(end[1]-start[1],end[0]-start[0])
+        heading = math.degrees(track_direction)
+
+        resp = fetch_required_steering_angle(waypoints,[i,i+1],start[0],start[1],track_width,heading);
+
+        ax.annotate(str(i)+ "/" +str(round(resp[1])), (x1[i], y1[i]))
+    plt.show()
