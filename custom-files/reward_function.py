@@ -124,44 +124,44 @@ def reward_function(params):
             reward+=50
 
     if next in left_waypoints and params['is_left_of_center']:
-        reward+=30.0
+        reward+=50.0
         if params['distance_from_center']>=0.3*params['track_width']:
-           reward+=40
+           reward+=100
         elif params['distance_from_center']>=0.2*params['track_width']:
-           reward+=25
+           reward+=40
         elif  params['distance_from_center']>=0.1*params['track_width']:
             reward+=10
     if next in right_waypoints and not params['is_left_of_center']:
-        reward+=30.0
+        reward+=50.0
         if params['distance_from_center']>=0.3*params['track_width']:
-           reward+=40
+           reward+=100
         elif params['distance_from_center']>=0.2*params['track_width']:
-           reward+=25
+           reward+=40
         elif  params['distance_from_center']>=0.1*params['track_width']:
             reward+=10
     if next in not_very_right_waypoints and not params['is_left_of_center']:
-        reward+=30.0
+        reward+=50.0
         if params['distance_from_center']>=0.2*params['track_width']:
-           reward+=40
+           reward+=100
     if next in not_very_left and params['is_left_of_center']:
-        reward+=30.0
+        reward+=50.0
         if  params['distance_from_center']>=0.2*params['track_width']:
-            reward+=40
+            reward+=100
     if next in basic_left:
         if params['is_left_of_center'] or params['distance_from_center']==0:
-            reward+=30
+            reward+=50
             if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=40
+                reward+=100
     if next in basic_right:
         if not params['is_left_of_center'] or params['distance_from_center']==0:
-            reward+=30
+            reward+=50
             if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=40
+                reward+=100
     if progress ==100:
         if steps <=270:
             reward+=2000
         if steps <=250:
-            reward+=1500
+            reward+=2000
         if steps <=230:
             reward+=1000
         if steps <=210:
