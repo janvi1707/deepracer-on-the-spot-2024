@@ -76,30 +76,30 @@ def reward_function(params):
     reward=reward+ steering_reward
     if next in straight_waypoints or next in almost_straight:
         if params['speed'] >=2.8:
-            reward+=15
+            reward+=10
         if params['speed'] >=3:
-            reward+=15
+            reward+=10
         if params['speed']>=3.2:
-            reward+=15
+            reward+=10
         if params['speed'] >=3.4:
-            reward+=15
+            reward+=20
         if params['speed'] >=3.7:
-            reward+=25
+            reward+=30
         if params['speed'] >=4:
-            reward+=15
+            reward+=40
         if params['speed'] >=4.2:
             reward+=15
         if params['speed'] >=4.4:
             reward+=15
     elif next not in curve_points:
         if params['speed'] >=2.0:
-            reward+=20
+            reward+=10
         if params['speed'] >=2.2:
             reward+=20
         if params['speed'] >=2.4:
-            reward+=20
+            reward+=30
         if params['speed'] >=2.6:
-            reward+=20
+            reward+=30
         if params['speed'] >=2.8:
             reward+=20
         if params['speed'] >=3.0:
@@ -119,9 +119,9 @@ def reward_function(params):
     if next in straight_waypoints:
 
         if params['distance_from_center']==0:
-            reward=reward+70
+            reward=reward+30+params['speed']**3
         elif params['distance_from_center']<=0.1*params['track_width']:
-            reward+=50
+            reward+=10+ params['speed']**3
 
     if next in left_waypoints and params['is_left_of_center']:
         reward+=50.0
@@ -151,12 +151,12 @@ def reward_function(params):
         if params['is_left_of_center'] or params['distance_from_center']==0:
             reward+=50
             if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=100
+                reward+=50+params['speed']**3
     if next in basic_right:
         if not params['is_left_of_center'] or params['distance_from_center']==0:
             reward+=50
             if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=100
+                reward+=50+params['speed']**3
     if progress ==100:
         if steps <=270:
             reward+=2000
