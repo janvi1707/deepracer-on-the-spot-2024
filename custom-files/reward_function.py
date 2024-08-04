@@ -154,6 +154,7 @@ def reward_function(params):
     if next in basic_right:
         if not params['is_left_of_center'] or params['distance_from_center']==0:
             reward+=100
+
     if progress ==100:
         if steps <=270:
             reward+=2000
