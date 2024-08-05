@@ -168,11 +168,11 @@ def reward_function(params):
     steps_t1= (threshold_1*progress)/100
     steps_t2= (threshold_2*progress)/100
     steps_t3= (threshold_3*progress)/100
-    if steps>=5 and steps%20==0:
+    if steps>=5 and steps%40==0:
         if steps<= steps_t3:
-            reward+=4000
+            reward+=8000
         if steps<= steps_t2:
-            reward+=1600
+            reward+=3200
         if steps<= steps_t1:
-            reward+=2400
+            reward+=4800
     return float(reward)
