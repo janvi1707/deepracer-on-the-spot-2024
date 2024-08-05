@@ -45,13 +45,10 @@ def reward_function(params):
     track_direction = math.degrees(track_direction)
 
     # Calculate the difference between the track direction and the heading direction of the car
-    straight_direction_diff = abs(track_direction - params['heading']-params['steering_angle'])
+
     direction_diff = abs(track_direction - params['heading'])
     if direction_diff > 180:
         direction_diff = 360 - direction_diff
-
-    if straight_direction_diff>180:
-        straight_direction_diff= 360-straight_direction_diff
 
     angle_f= angle_between_lines(next_point_1[0],next_point_1[1],next_point_2[0],next_point_2[1],next_point_3[0],next_point_3[1],next_point_4[0],next_point_4[1])
     angle_b= angle_between_lines(prev_point_2[0],prev_point_2[1],prev_point[0],prev_point[1],next_point_1[0],next_point_1[1],next_point_2[0],next_point_2[1])
@@ -68,120 +65,114 @@ def reward_function(params):
     if next ==1 or prev==1 or (next+1)%waypoints_length ==1 or (next+2)%waypoints_length ==1 or (next+3)%waypoints_length ==1 or (next+4)%waypoints_length ==1 or (next+5)%waypoints_length ==1 or (next+6)%waypoints_length ==1 or (next+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
         total_angle = 0
     steering_reward=1e-4
-    if next not in curve_points:
-        steering_reward = 160*math.tanh(10/(1+abs(straight_direction_diff - total_angle)))
-    else:
-        steering_reward = 160*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
+    steering_reward = 80*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
 
     reward=reward+ steering_reward
     if next in straight_waypoints or next in almost_straight:
         if params['speed'] >=2.8:
-            reward+=10
+            reward+=5
         if params['speed'] >=3:
-            reward+=10
+            reward+=5
         if params['speed']>=3.2:
-            reward+=10
+            reward+=5
         if params['speed'] >=3.4:
-            reward+=20
+            reward+=10
         if params['speed'] >=3.7:
-            reward+=30
+            reward+=15
         if params['speed'] >=4:
-            reward+=40
+            reward+=20
         if params['speed'] >=4.2:
-            reward+=15
+            reward+=10
         if params['speed'] >=4.4:
-            reward+=15
+            reward+=10
     elif next not in curve_points:
         if params['speed'] >=2.0:
-            reward+=10
-        if params['speed'] >=2.2:
-            reward+=20
-        if params['speed'] >=2.4:
-            reward+=30
-        if params['speed'] >=2.6:
-            reward+=30
-        if params['speed'] >=2.8:
-            reward+=20
-        if params['speed'] >=3.0:
-            reward+=20
-        if params['speed'] >=3.2:
             reward+=5
+        if params['speed'] >=2.2:
+            reward+=10
+        if params['speed'] >=2.4:
+            reward+=15
+        if params['speed'] >=2.6:
+            reward+=15
+        if params['speed'] >=2.8:
+            reward+=10
+        if params['speed'] >=3.0:
+            reward+=10
+        if params['speed'] >=3.2:
+            reward+=10
     elif abs(total_angle) <=20:
         opt_speed= 5*math.tanh(10/(1+abs(total_angle)))
         opt_speed=max(1.9,opt_speed)
-        reward+=(5-abs(params['speed']-opt_speed))**3
+        reward+=((5-abs(params['speed']-opt_speed))**3)/2
     else:
         opt_speed= 5*math.tanh(8/(1+abs(total_angle)))
         opt_speed=max(1.4,opt_speed)
-        reward+=(5-abs(params['speed']-opt_speed))**3
+        reward+=((5-abs(params['speed']-opt_speed))**3)/2
 
 
     if next in straight_waypoints:
 
         if params['distance_from_center']==0:
-            reward=reward+30+params['speed']**3
+            reward=reward+(30+params['speed']**3)
         elif params['distance_from_center']<=0.1*params['track_width']:
-            reward+=10+ params['speed']**3
+            reward+=5+ (params['speed']**3)
 
     if next in left_waypoints and params['is_left_of_center']:
-        reward+=50.0
+        reward+=25.0
         if params['distance_from_center']>=0.3*params['track_width']:
-           reward+=100
+           reward+=50
         elif params['distance_from_center']>=0.2*params['track_width']:
-           reward+=40
+           reward+=20
         elif  params['distance_from_center']>=0.1*params['track_width']:
-            reward+=10
+            reward+=5
     if next in right_waypoints and not params['is_left_of_center']:
-        reward+=50.0
+        reward+=25.0
         if params['distance_from_center']>=0.3*params['track_width']:
-           reward+=100
+           reward+=50
         elif params['distance_from_center']>=0.2*params['track_width']:
-           reward+=40
+           reward+=20
         elif  params['distance_from_center']>=0.1*params['track_width']:
-            reward+=10
+            reward+=5
     if next in not_very_right_waypoints and not params['is_left_of_center']:
-        reward+=50.0
+        reward+=25.0
         if params['distance_from_center']>=0.2*params['track_width']:
-           reward+=100
+           reward+=50
     if next in not_very_left and params['is_left_of_center']:
-        reward+=50.0
+        reward+=25.0
         if  params['distance_from_center']>=0.2*params['track_width']:
-            reward+=100
+            reward+=50
     if next in basic_left:
         if params['is_left_of_center'] or params['distance_from_center']==0:
-            reward+=50
+            reward+=25
             if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=50+params['speed']**3
+                reward+=25+(params['speed']**3)/2
     if next in basic_right:
         if not params['is_left_of_center'] or params['distance_from_center']==0:
             reward+=50
             if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=50+params['speed']**3
+                reward+=25+(params['speed']**3)/2
     if progress ==100:
-            if steps <=240:
-                reward+=2000
-            if steps <=230:
-                reward+=3500
-            if steps <=220:
-                reward+=1500
-            if steps <=210:
-                reward+=1500
-            if steps <=190:
-                reward+=1000
-            if steps <=170:
-                reward+=500
-    threshold_1=225
+        if steps <=250:
+            reward+=5000
+        if steps <=240:
+            reward+=2000
+        if steps <=230:
+            reward+=1000
+        if steps <=220:
+            reward+=1000
+        if steps <=210:
+            reward+=1000
+    threshold_1=215
     threshold_2=235
-    threshold_3=240
+    threshold_3=250
     steps_t1= (threshold_1*progress)/100
     steps_t2= (threshold_2*progress)/100
     steps_t3= (threshold_3*progress)/100
     if steps>=5 and steps%20==0:
         if steps<= steps_t3:
-            reward+=2000
+            reward+=4000
         if steps<= steps_t2:
-            reward+=1000
+            reward+=1600
         if steps<= steps_t1:
-            reward+=600
-
+            reward+=2400
     return float(reward)
