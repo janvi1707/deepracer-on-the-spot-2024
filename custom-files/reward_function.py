@@ -158,11 +158,11 @@ def reward_function(params):
             if params['distance_from_center']<=0.2*params['track_width']:
                 reward+=50+params['speed']**3
     if progress ==100:
-            if steps <=270:
+            if steps <=240:
                 reward+=2000
-            if steps <=250:
-                reward+=3500
             if steps <=230:
+                reward+=3500
+            if steps <=220:
                 reward+=1500
             if steps <=210:
                 reward+=1500
@@ -171,16 +171,16 @@ def reward_function(params):
             if steps <=170:
                 reward+=500
     threshold_1=225
-    threshold_2=240
-    threshold_3=270
+    threshold_2=235
+    threshold_3=240
     steps_t1= (threshold_1*progress)/100
     steps_t2= (threshold_2*progress)/100
     steps_t3= (threshold_3*progress)/100
     if steps>=5 and steps%20==0:
         if steps<= steps_t3:
-            reward+=1000
+            reward+=2000
         if steps<= steps_t2:
-            reward+=600
+            reward+=1000
         if steps<= steps_t1:
             reward+=600
 
