@@ -94,7 +94,7 @@ def reward_function(params):
     
     steering_and_distance_from_center_reward = (dfc_reward + (500/(1+100*abs(resp[0]-steering_angle))))
     speed_reward = 0;
-    if(abs(steering_angle)<5):
+    if(abs(resp[1])<=10):
         max_speed = 0;        
         if(speed>2):
             max_speed = 2;
