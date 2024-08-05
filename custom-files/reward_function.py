@@ -152,27 +152,64 @@ def reward_function(params):
             if params['distance_from_center']<=0.2*params['track_width']:
                 reward+=25+(params['speed']**3)/2
     if progress ==100:
-        if steps <=250:
-            reward+=5000
-        if steps <=240:
-            reward+=2000
-        if steps <=230:
-            reward+=1000
-        if steps <=220:
-            reward+=1000
-        if steps <=210:
-            reward+=1000
-    threshold_1=215
-    threshold_2=235
-    threshold_3=250
+            if steps <=240:
+                reward+=5000
+            if steps <=235:
+                reward+=2000
+            if steps <=230:
+                reward+=1000
+            if steps <=225:
+                reward+=1000
+            if steps <=220:
+                reward+=1000
+
+    threshold_0=225  #15 sec
+    threshold_1=230  #15.4 sec
+    threshold_2=240  #16.0 sec
+    threshold_3=250  #16.7 sec
+    threshold_4=255  #17 sec
+
+    bad_th_0=260  #17.4 sec
+    bad_th_1=265  #17.7 sec
+    bad_th_2=270  #18 sec
+    bad_th_3=275  #18.4 sec
+
+    steps_t0= (threshold_0*progress)/100
     steps_t1= (threshold_1*progress)/100
     steps_t2= (threshold_2*progress)/100
     steps_t3= (threshold_3*progress)/100
-    if steps>=5 and steps%40==0:
+    steps_t4= (threshold_4*progress)/100
+
+    bad_step0=(bad_th_0*progress)/100
+    bad_step1=(bad_th_1*progress)/100
+    bad_step2=(bad_th_2*progress)/100
+    bad_step3=(bad_th_3*progress)/100
+
+    if steps%70==0:
+        if steps>=bad_step3:
+            reward=0.5*reward
+        elif steps>=bad_step2:
+            reward=0.6*reward
+        elif steps>=bad_step1:
+            reward=0.7*reward
+        elif steps>=bad_step0:
+            reward=0.8*reward
+
+    if steps%60==0:
+        if steps<=steps_t4:
+            #180 per step
+            reward+=10800
         if steps<= steps_t3:
-            reward+=8000
+            #250 per step
+            reward+=4200
         if steps<= steps_t2:
-            reward+=3200
+            #320 per step
+            reward+=4200
         if steps<= steps_t1:
-            reward+=4800
+            #360 per step
+            reward+=2400
+        if steps <= steps_t0:
+            #410 per step
+            reward+=3000
+
     return float(reward)
