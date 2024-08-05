@@ -5,7 +5,7 @@ def progress_reward(params):
     progress = params['progress']
     steps = params['steps']+1
     reward = (progress)/(100*steps)
-    return 1+reward;
+    return 500*(1+reward);
 
 def get_abs_speed(diff):
     return min(4,54/(12+diff));
@@ -118,4 +118,4 @@ def reward_function(params):
         speed_reward= 500/(1+abs(req_speed-speed))
     
 
-    return float(speed_reward) * float(steering_and_distance_from_center_reward) * float(progress_reward(params));
+    return float(speed_reward) * float(steering_and_distance_from_center_reward) * float(progress_reward(params)) * 0.00001;
