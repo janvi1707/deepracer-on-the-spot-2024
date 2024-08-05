@@ -3,9 +3,8 @@ import math
 
 def progress_reward(params):
     progress = params['progress']
-    steps = params['steps']+1
-    reward = (progress)/(100*steps)
-    return 500*(1+reward);
+    reward = (progress)/100
+    return 200*(1+reward);
 
 def get_abs_speed(diff):
     return min(4,54/(12+diff));
