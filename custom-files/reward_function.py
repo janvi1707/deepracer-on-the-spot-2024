@@ -75,12 +75,12 @@ def reward_function(params):
 
     dfc_reward = 100;
     
-    if(resp[1]<-5 and is_left_of_center):
+    if(resp[1]<-5 and not is_left_of_center):
         dfc_reward=100;
         dfc = track_width * (abs(resp[1])/50)
         dfc = 500/(1 + 100*abs(distance_from_center - dfc))
         dfc_reward = dfc_reward + dfc
-    elif(resp[1]>5 and not is_left_of_center):
+    elif(resp[1]>5 and is_left_of_center):
         dfc_reward=100;
         dfc = track_width * (abs(resp[1])/50)
         dfc = 500/(1 + 100*abs(distance_from_center - dfc))
