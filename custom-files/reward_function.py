@@ -117,5 +117,5 @@ def reward_function(params):
         req_speed = get_abs_speed(abs(steering_angle))
         speed_reward= 500/(1+abs(req_speed-speed))
     
-
+    print('Required Steering: {}, Track Direction : "{}!"'.format(resp[0], resp[1]))
     return float(speed_reward) * float(steering_and_distance_from_center_reward) * float(progress_reward(params)) * 0.00001;
