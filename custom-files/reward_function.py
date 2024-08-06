@@ -1,5 +1,8 @@
 import math
 
+prev_steer = None
+prev_speed= None
+
 def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
     dx1 = x2 - x1
     dy1 = y2 - y1
@@ -13,6 +16,8 @@ def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
         deg= deg+360
     return deg
 def reward_function(params):
+    global prev_steer
+    global prev_speed
     if params['is_offtrack'] or params['is_crashed']:
         return 1e-9
     waypoints = params['waypoints']
@@ -27,6 +32,7 @@ def reward_function(params):
     basic_left=[1,2,3,4,23,24,25,26,27,28,29,30,56,57,58,59,87,88,89,90,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,141,142,143,144,145,146,147,148,149,150,151,152,153,154]
     basic_right=[60,61,62,83,84,85,86]
     curve_points= left_waypoints + right_waypoints
+    semi_curve_point= not_very_left+not_very_right_waypoints
     almost_straight= basic_left + basic_right
     # Calculate the direction of the center line based on the closest waypoints
     waypoints_length= len(waypoints)
@@ -45,10 +51,13 @@ def reward_function(params):
     track_direction = math.degrees(track_direction)
 
     # Calculate the difference between the track direction and the heading direction of the car
-
+    straight_direction_diff = abs(track_direction - params['heading']-params['steering_angle'])
     direction_diff = abs(track_direction - params['heading'])
     if direction_diff > 180:
         direction_diff = 360 - direction_diff
+
+    if straight_direction_diff>180:
+        straight_direction_diff= 360-straight_direction_diff
 
     angle_f= angle_between_lines(next_point_1[0],next_point_1[1],next_point_2[0],next_point_2[1],next_point_3[0],next_point_3[1],next_point_4[0],next_point_4[1])
     angle_b= angle_between_lines(prev_point_2[0],prev_point_2[1],prev_point[0],prev_point[1],next_point_1[0],next_point_1[1],next_point_2[0],next_point_2[1])
@@ -64,152 +73,178 @@ def reward_function(params):
         total_angle=-30
     if next ==1 or prev==1 or (next+1)%waypoints_length ==1 or (next+2)%waypoints_length ==1 or (next+3)%waypoints_length ==1 or (next+4)%waypoints_length ==1 or (next+5)%waypoints_length ==1 or (next+6)%waypoints_length ==1 or (next+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
         total_angle = 0
+
     steering_reward=1e-4
-    steering_reward = 80*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
+    if prev_steer is not None:
+        if prev_point_2 not in curve_points and next not in curve_points:
+            if abs(prev_steer-params['steering_angle']) < 5:
+                steering_reward = 160*math.tanh(10/(1+abs(straight_direction_diff - total_angle)))                
+        else:
+            if abs(prev_steer-params['steering_angle']) <= 15:
+                steering_reward = 160*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))           
+    else:
+        if next not in curve_points:
+            steering_reward = 160*math.tanh(10/(1+abs(straight_direction_diff - total_angle)))
+        else:
+            steering_reward = 160*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
 
     reward=reward+ steering_reward
-    if next in straight_waypoints or next in almost_straight:
-        if params['speed'] >=2.8:
-            reward+=5
-        if params['speed'] >=3:
-            reward+=5
-        if params['speed']>=3.2:
-            reward+=5
-        if params['speed'] >=3.4:
-            reward+=10
-        if params['speed'] >=3.7:
-            reward+=15
-        if params['speed'] >=4:
-            reward+=20
-        if params['speed'] >=4.2:
-            reward+=10
-        if params['speed'] >=4.4:
-            reward+=10
-    elif next not in curve_points:
-        if params['speed'] >=2.0:
-            reward+=5
-        if params['speed'] >=2.2:
-            reward+=10
-        if params['speed'] >=2.4:
-            reward+=15
-        if params['speed'] >=2.6:
-            reward+=15
-        if params['speed'] >=2.8:
-            reward+=10
-        if params['speed'] >=3.0:
-            reward+=10
-        if params['speed'] >=3.2:
-            reward+=10
-    elif abs(total_angle) <=20:
-        opt_speed= 5*math.tanh(10/(1+abs(total_angle)))
-        opt_speed=max(1.9,opt_speed)
-        reward+=((5-abs(params['speed']-opt_speed))**3)/2
+
+    if prev_speed is not None:
+        if params['speed']>=prev_speed:
+            if next_point_3 not in curve_points and next not in semi_curve_point:
+                if params['speed'] >=2.8:
+                    reward+=10
+                if params['speed'] >=3:
+                    reward+=10
+                if params['speed']>=3.2:
+                    reward+=10
+                if params['speed'] >=3.4:
+                    reward+=20
+                if params['speed'] >=3.7:
+                    reward+=30
+                if params['speed'] >=4:
+                    reward+=40
+                if params['speed'] >=4.2:
+                    reward+=15
+                if params['speed'] >=4.4:
+                    reward+=15
+            elif next in semi_curve_point:
+                if params['speed'] >=2.0:
+                    reward+=10
+                if params['speed'] >=2.2:
+                    reward+=20
+                if params['speed'] >=2.4:
+                    reward+=30
+                if params['speed'] >=2.6:
+                    reward+=30
+                if params['speed'] >=2.8:
+                    reward+=20
+                if params['speed'] >=3.0:
+                    reward+=20
+                if params['speed'] >=3.2:
+                    reward+=5
+            elif abs(total_angle) <=20:
+                opt_speed= 5*math.tanh(10/(1+abs(total_angle)))
+                opt_speed=max(1.9,opt_speed)
+                reward+=(5-abs(params['speed']-opt_speed))**3
+            else:
+                opt_speed= 5*math.tanh(8/(1+abs(total_angle)))
+                opt_speed=max(1.4,opt_speed)
+                reward+=(5-abs(params['speed']-opt_speed))**3
     else:
-        opt_speed= 5*math.tanh(8/(1+abs(total_angle)))
-        opt_speed=max(1.4,opt_speed)
-        reward+=((5-abs(params['speed']-opt_speed))**3)/2
+        if next in straight_waypoints or next in basic_left or next in basic_right:
+            if params['speed'] >=2.8:
+                reward+=5
+            if params['speed'] >=3:
+                reward+=25
+            if params['speed']>=3.2:
+                reward+=20
+            if params['speed'] >=3.4:
+                reward+=20
+            if params['speed'] >=3.7:
+                reward+=50
+            if params['speed'] >=4:
+                reward+=80
+            if params['speed'] >=4.2:
+                reward+=80
+            if params['speed'] >=4.4:
+                reward+=80
+        elif next not in curve_points:
+            if params['speed'] >=2.0:
+                reward+=10
+            if params['speed'] >=2.2:
+                reward+=20
+            if params['speed'] >=2.4:
+                reward+=20
+            if params['speed'] >=2.6:
+                reward+=20
+            if params['speed'] >=2.8:
+                reward+=20
+            if params['speed'] >=3.0:
+                reward+=30
+            if params['speed'] >=3.2:
+                reward+=30
+        else:
+            opt_speed= 5*math.tanh(8/(1+abs(total_angle)))
+            opt_speed=max(1.4,opt_speed)
+            reward+=(5-abs(params['speed']-opt_speed))**2
 
 
     if next in straight_waypoints:
 
         if params['distance_from_center']==0:
-            reward=reward+(30+params['speed']**3)
+            reward=reward+30+params['speed']**3
         elif params['distance_from_center']<=0.1*params['track_width']:
-            reward+=5+ (params['speed']**3)
+            reward+=10+ params['speed']**3
 
     if next in left_waypoints and params['is_left_of_center']:
-        reward+=25.0
+        reward+=50.0
         if params['distance_from_center']>=0.3*params['track_width']:
-           reward+=50
+           reward+=100
         elif params['distance_from_center']>=0.2*params['track_width']:
-           reward+=20
+           reward+=40
         elif  params['distance_from_center']>=0.1*params['track_width']:
-            reward+=5
+            reward+=10
     if next in right_waypoints and not params['is_left_of_center']:
-        reward+=25.0
+        reward+=50.0
         if params['distance_from_center']>=0.3*params['track_width']:
-           reward+=50
+           reward+=100
         elif params['distance_from_center']>=0.2*params['track_width']:
-           reward+=20
+           reward+=40
         elif  params['distance_from_center']>=0.1*params['track_width']:
-            reward+=5
+            reward+=10
     if next in not_very_right_waypoints and not params['is_left_of_center']:
-        reward+=25.0
+        reward+=50.0
         if params['distance_from_center']>=0.2*params['track_width']:
-           reward+=50
+           reward+=100
     if next in not_very_left and params['is_left_of_center']:
-        reward+=25.0
+        reward+=50.0
         if  params['distance_from_center']>=0.2*params['track_width']:
-            reward+=50
+            reward+=100
     if next in basic_left:
         if params['is_left_of_center'] or params['distance_from_center']==0:
-            reward+=25
+            reward+=50
             if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=25+(params['speed']**3)/2
+                reward+=50+params['speed']**3
     if next in basic_right:
         if not params['is_left_of_center'] or params['distance_from_center']==0:
             reward+=50
             if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=25+(params['speed']**3)/2
+                reward+=50+params['speed']**3
     if progress ==100:
-            if steps <=240:
-                reward+=5000
-            if steps <=235:
-                reward+=2000
-            if steps <=230:
-                reward+=1000
-            if steps <=225:
-                reward+=1000
-            if steps <=220:
-                reward+=1000
-
-    threshold_0=225  #15 sec
-    threshold_1=230  #15.4 sec
-    threshold_2=240  #16.0 sec
-    threshold_3=250  #16.7 sec
-    threshold_4=255  #17 sec
-
-    bad_th_0=260  #17.4 sec
-    bad_th_1=265  #17.7 sec
-    bad_th_2=270  #18 sec
-    bad_th_3=275  #18.4 sec
-
-    steps_t0= (threshold_0*progress)/100
+        if steps <=270:
+            reward+=2000
+        if steps <=250:
+            reward+=2000
+        if steps <=230:
+            reward+=1000
+        if steps <=210:
+            reward+=1000
+        if steps <=190:
+            reward+=1000
+        if steps <=170:
+            reward+=500
+    threshold_1=210
+    threshold_2=240
+    threshold_3=270
     steps_t1= (threshold_1*progress)/100
     steps_t2= (threshold_2*progress)/100
     steps_t3= (threshold_3*progress)/100
-    steps_t4= (threshold_4*progress)/100
-
-    bad_step0=(bad_th_0*progress)/100
-    bad_step1=(bad_th_1*progress)/100
-    bad_step2=(bad_th_2*progress)/100
-    bad_step3=(bad_th_3*progress)/100
-
-    if steps%70==0:
-        if steps>=bad_step3:
-            reward=0.5*reward
-        elif steps>=bad_step2:
-            reward=0.6*reward
-        elif steps>=bad_step1:
-            reward=0.7*reward
-        elif steps>=bad_step0:
-            reward=0.8*reward
-
-    if steps%60==0:
-        if steps<=steps_t4:
-            #180 per step
-            reward+=10800
+    if steps>=5 and steps%30==0:
         if steps<= steps_t3:
-            #250 per step
-            reward+=4200
+            reward+=900
         if steps<= steps_t2:
-            #320 per step
-            reward+=4200
+            reward+=300
         if steps<= steps_t1:
-            #360 per step
-            reward+=2400
-        if steps <= steps_t0:
-            #410 per step
-            reward+=3000
+            reward+=300
+
+    prev_steer=params['steering_angle']
+    prev_speed=params['speed']
+        
+    if prev_steer is not None:
+        print("janvi : steeer angle",prev_steer,closest_waypoints,params['speed'])
+    else:
+        print("prev_steering null")
 
     return float(reward)
