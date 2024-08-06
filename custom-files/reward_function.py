@@ -133,7 +133,7 @@ def reward_function(params):
                 opt_speed=max(1.4,opt_speed)
                 reward+=(5-abs(params['speed']-opt_speed))**3
     else:
-        if next in straight_waypoints or next in basic_left or next in basic_right:
+        if next not in curve_points and next not in semi_curve_point:
             if params['speed'] >=2.8:
                 reward+=5
             if params['speed'] >=3:
@@ -244,7 +244,7 @@ def reward_function(params):
     expected_time= 15.0
 
     if progress == 100:
-        return 1.5*reward/(1+abs(estimated_time-expected_time))
+        reward= 1.5*reward/(1+abs(estimated_time-expected_time))
 
     prev_steer=params['steering_angle']
     prev_speed=params['speed']
