@@ -115,9 +115,9 @@ def reward_function(params):
             max_speed=4
             speed_reward = speed_reward+100;
             
-        speed_reward = speed_reward + 100*((speed-max_speed)/(max_speed+0.5))
+        speed_reward = speed_reward + 100*((speed-max_speed)/0.5)
     else:
-        req_speed = get_abs_speed(abs(steering_angle))
+        req_speed = get_abs_speed(abs(resp[0]))
         speed_reward= 500/(1+abs(req_speed-speed))
     
     print('Required Steering: {}, Track Direction : "{}!"'.format(resp[0], resp[1]))
