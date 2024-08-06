@@ -213,31 +213,38 @@ def reward_function(params):
             if params['distance_from_center']<=0.2*params['track_width']:
                 reward+=50+params['speed']**3
     if progress ==100:
-        if steps <=270:
+        if steps <=255:
             reward+=2000
         if steps <=250:
             reward+=2000
+        if steps <=245:
+            reward+=2000
+        if steps <=240:
+            reward+=2000
+        if steps <=235:
+            reward+=2000
         if steps <=230:
-            reward+=1000
-        if steps <=210:
-            reward+=1000
-        if steps <=190:
-            reward+=1000
-        if steps <=170:
-            reward+=500
-    threshold_1=210
-    threshold_2=240
-    threshold_3=270
+            reward+=2000
+
+    threshold_1=240
+    threshold_2=250
+    threshold_3=255
     steps_t1= (threshold_1*progress)/100
     steps_t2= (threshold_2*progress)/100
     steps_t3= (threshold_3*progress)/100
-    if steps>=5 and steps%30==0:
+    if steps>=5 and steps%80==0:
         if steps<= steps_t3:
-            reward+=900
+            reward+=8000
         if steps<= steps_t2:
-            reward+=300
+            reward+=8000
         if steps<= steps_t1:
-            reward+=300
+            reward+=5000
+
+    estimated_time=(steps+1)/15
+    expected_time= 15.0
+
+    if progress == 100:
+        return 1.5*reward/(1+abs(estimated_time-expected_time))
 
     prev_steer=params['steering_angle']
     prev_speed=params['speed']
@@ -248,3 +255,4 @@ def reward_function(params):
         print("prev_steering null")
 
     return float(reward)
+
