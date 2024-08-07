@@ -101,8 +101,8 @@ def reward_function(params):
         dfc_reward = dfc_reward + dfc;
     steering_and_distance_from_center_reward = (dfc_reward + (500/(1+100*direction_diff)))
     speed_reward = 0;
+    max_speed = 0;
     if(abs(resp[1])<=10):
-        max_speed = 0;        
         if(speed>2):
             max_speed = 2;
             speed_reward=speed_reward+100;
@@ -123,10 +123,18 @@ def reward_function(params):
     else:
         req_speed = get_abs_speed(abs(resp[0]))
         speed_reward= 500/(1+abs(req_speed-speed))
-    print('Required Steering: {}, Track Direction : {}'.format(resp[0], resp[1]))
-    heading_diff = abs(resp[1]-heading);
-    if heading_diff > 180:
-        heading_diff = 360-heading_diff;
+    print("Calculated Steering {}, Track direction : {}".format(resp[0],resp[1]))
+    start = int(closest_waypoints[0]);
+    end = int(closest_waypoints[1]);
+    track_direction = math.atan2(end[1]-start[1],end[0]-start[0])
+    track_direction = math.degrees(track_direction)
+
+    heading_diff = track_direction-heading
+
+    if(heading_diff>180):
+        heading_diff = heading_diff-360;
+    elif(heading_diff<-180):
+        heading_diff = heading_diff+360;
     
     if(abs(resp[1])<=10):
         return float(speed_reward) * (500/(1+100 * abs(heading_diff))) * float(progress_reward(params)) * 0.00001;
