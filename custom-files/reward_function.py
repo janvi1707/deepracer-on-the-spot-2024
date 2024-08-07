@@ -42,8 +42,12 @@ def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,he
 
     track_direction = math.atan2(end[1]-start[1],end[0]-start[0])
     track_direction = math.degrees(track_direction)
-
-    direction_diff = track_direction-heading
+    
+    next_start = waypoints[int(closest_waypoints[1])]
+    
+    ideal_heading = math.atan2(next_start[1]-start[1],next_start[0]-start[0])
+    ideal_heading = math.degrees(ideal_heading)
+    direction_diff = track_direction-ideal_heading
 
     if(direction_diff>180):
         direction_diff = direction_diff-360;
@@ -51,6 +55,8 @@ def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,he
         direction_diff = direction_diff+360;
     track_direction = direction_diff;
 
+
+    
     return [req_steer, track_direction]
 
 def reward_function(params):
@@ -95,7 +101,7 @@ def reward_function(params):
         dfc_reward = dfc_reward + dfc;
 
     
-    steering_and_distance_from_center_reward = (dfc_reward + (500/(1+100*abs(resp[0]-steering_angle))))
+    steering_and_distance_from_center_reward = (dfc_reward + (500/(1+100*abs(direction_diff))))
     speed_reward = 0;
     if(abs(resp[1])<=10):
         max_speed = 0;        
@@ -123,6 +129,6 @@ def reward_function(params):
     print('Required Steering: {}, Track Direction : {}'.format(resp[0], resp[1]))
 
     if(abs(resp[1])<=10):
-        return float(speed_reward) * float(progress_reward(params)) * 0.00001;
+        return float(speed_reward) * (500/(resp[0]+1)) * float(progress_reward(params)) * 0.00001;
     else:
         return float(steering_and_distance_from_center_reward) * float(progress_reward(params)) * 0.00001;
