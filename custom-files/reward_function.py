@@ -97,8 +97,7 @@ def reward_function(params):
     elif(abs(resp[1])>5):
         dfc_reward=1e-9;
     else:
-        dfc = 500/(1 + 100*(distance_from_center - track_width));
-        dfc_reward = dfc_reward + dfc;
+        dfc_reward = 600/(1 + 100*(distance_from_center));
     steering_and_distance_from_center_reward = (dfc_reward + (500/(1+direction_diff)))
     speed_reward = 0;
     max_speed = 0;
@@ -139,6 +138,6 @@ def reward_function(params):
         heading_diff = heading_diff+360;
     
     if(abs(resp[1])<=5):
-        return float(speed_reward) * (500/(1+100 * abs(heading_diff))) * float(progress_reward(params)) * 0.00001;
+        return float(speed_reward) * float(dfc_reward) * float(progress_reward(params)) * 0.00001;
     else:
         return float(steering_and_distance_from_center_reward) * float(progress_reward(params)) * 0.00001;
