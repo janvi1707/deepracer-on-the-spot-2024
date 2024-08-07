@@ -123,7 +123,7 @@ def reward_function(params):
     else:
         req_speed = get_abs_speed(abs(resp[0]))
         speed_reward= 500/(1+abs(req_speed-speed))
-    
+    print('Required Steering: {}, Track Direction : {}'.format(resp[0], resp[1]))
     heading_diff = abs(resp[1]-heading);
     if heading_diff > 180:
         heading_diff = 360-heading_diff;
