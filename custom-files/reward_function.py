@@ -58,6 +58,7 @@ def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,he
 
     
     return [req_steer, track_direction]
+    
 
 def reward_function(params):
     if params['is_offtrack'] or params['is_crashed']:
@@ -79,7 +80,6 @@ def reward_function(params):
         direction_diff = 360-direction_diff;
 
     dfc_reward = 100;
-    
     if(resp[1]<-10 and not is_left_of_center):
         dfc_reward=100;
         dfc = track_width * (abs(resp[1])/60)
@@ -99,8 +99,6 @@ def reward_function(params):
     else:
         dfc = 500/(1 + 100*(distance_from_center - track_width));
         dfc_reward = dfc_reward + dfc;
-
-    
     steering_and_distance_from_center_reward = (dfc_reward + (500/(1+100*direction_diff)))
     speed_reward = 0;
     if(abs(resp[1])<=10):
@@ -126,9 +124,11 @@ def reward_function(params):
         req_speed = get_abs_speed(abs(resp[0]))
         speed_reward= 500/(1+abs(req_speed-speed))
     
-    print('Required Steering: {}, Track Direction : {}'.format(resp[0], resp[1]))
-
+    heading_diff = abs(resp[1]-heading);
+    if heading_diff > 180:
+        heading_diff = 360-heading_diff;
+    
     if(abs(resp[1])<=10):
-        return float(speed_reward) * float(progress_reward(params)) * 0.00001;
+        return float(speed_reward) * (500/(1+100 * abs(heading_diff))) * float(progress_reward(params)) * 0.00001;
     else:
         return float(steering_and_distance_from_center_reward) * float(progress_reward(params)) * 0.00001;
