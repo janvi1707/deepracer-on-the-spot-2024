@@ -47,7 +47,7 @@ def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,he
     
     ideal_heading = math.atan2(next_start[1]-start[1],next_start[0]-start[0])
     ideal_heading = math.degrees(ideal_heading)
-    direction_diff = track_direction-ideal_heading
+    direction_diff = track_direction-heading
 
     if(direction_diff>180):
         direction_diff = direction_diff-360;
