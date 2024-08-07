@@ -7,7 +7,7 @@ def progress_reward(params):
     return 200*(1+reward);
 
 def get_abs_speed(diff):
-    return min(4,78.75/(15.75+diff))
+    return max(1.8,min(4,78.75/(15.75+diff)))
 
 def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,heading):
     w_len = len(waypoints);
@@ -121,4 +121,8 @@ def reward_function(params):
         speed_reward= 500/(1+abs(req_speed-speed))
     
     print('Required Steering: {}, Track Direction : {}'.format(resp[0], resp[1]))
-    return float(speed_reward) * float(steering_and_distance_from_center_reward) * float(progress_reward(params)) * 0.00001;
+
+    if(abs(resp[0])<=10):
+        return float(speed_reward) * float(progress_reward(params)) * 0.00001;
+    else:
+        return float(steering_and_distance_from_center_reward) * float(progress_reward(params)) * 0.00001;
