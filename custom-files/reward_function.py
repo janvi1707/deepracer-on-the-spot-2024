@@ -126,7 +126,7 @@ def reward_function(params):
     print("Calculated Steering {}, Track direction : {}".format(resp[0],resp[1]))
     start = int(closest_waypoints[0]);
     end = int(closest_waypoints[1]);
-    track_direction = math.atan2(end[1]-start[1],end[0]-start[0])
+    track_direction = math.atan2(waypoints[end][1]-waypoints[start][1],waypoints[end][0]-waypoints[start][0])
     track_direction = math.degrees(track_direction)
 
     heading_diff = track_direction-heading
