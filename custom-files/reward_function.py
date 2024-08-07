@@ -115,49 +115,6 @@ def reward_function(params):
         opt_speed=max(1.4,opt_speed)
         reward+=(5-abs(params['speed']-opt_speed))**3
 
-
-    if next in straight_waypoints:
-
-        if params['distance_from_center']==0:
-            reward=reward+30+params['speed']**3
-        elif params['distance_from_center']<=0.1*params['track_width']:
-            reward+=10+ params['speed']**3
-
-    if next in left_waypoints and params['is_left_of_center']:
-        reward+=50.0
-        if params['distance_from_center']>=0.3*params['track_width']:
-           reward+=100
-        elif params['distance_from_center']>=0.2*params['track_width']:
-           reward+=40
-        elif  params['distance_from_center']>=0.1*params['track_width']:
-            reward+=10
-    if next in right_waypoints and not params['is_left_of_center']:
-        reward+=50.0
-        if params['distance_from_center']>=0.3*params['track_width']:
-           reward+=100
-        elif params['distance_from_center']>=0.2*params['track_width']:
-           reward+=40
-        elif  params['distance_from_center']>=0.1*params['track_width']:
-            reward+=10
-    if next in not_very_right_waypoints and not params['is_left_of_center']:
-        reward+=50.0
-        if params['distance_from_center']>=0.2*params['track_width']:
-           reward+=100
-    if next in not_very_left and params['is_left_of_center']:
-        reward+=50.0
-        if  params['distance_from_center']>=0.2*params['track_width']:
-            reward+=100
-    if next in basic_left:
-        if params['is_left_of_center'] or params['distance_from_center']==0:
-            reward+=50
-            if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=50+params['speed']**3
-    if next in basic_right:
-        if not params['is_left_of_center'] or params['distance_from_center']==0:
-            reward+=50
-            if params['distance_from_center']<=0.2*params['track_width']:
-                reward+=50+params['speed']**3
-
     estimated_time=(steps+1)/15
     expected_time= (((progress*225)/100)+1)/15
 
