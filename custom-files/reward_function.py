@@ -99,7 +99,7 @@ def reward_function(params):
     else:
         dfc = 500/(1 + 100*(distance_from_center - track_width));
         dfc_reward = dfc_reward + dfc;
-    steering_and_distance_from_center_reward = (dfc_reward + (500/(1+100*direction_diff)))
+    steering_and_distance_from_center_reward = (dfc_reward + (500/(1+direction_diff)))
     speed_reward = 0;
     max_speed = 0;
     if(abs(resp[1])<=10):
