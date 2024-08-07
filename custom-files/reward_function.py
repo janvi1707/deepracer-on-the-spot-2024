@@ -119,5 +119,6 @@ def reward_function(params):
     expected_time= (((progress*225)/100)+1)/15
 
     if steps>=1 and steps%20==0:
-        reward= 1.5*reward/(1+abs(estimated_time-expected_time))
+        reward= reward/(1+abs(estimated_time-expected_time))
+
     return float(reward)
