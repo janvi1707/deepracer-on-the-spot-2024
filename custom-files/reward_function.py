@@ -7,7 +7,7 @@ def progress_reward(params):
     return 200*(1+reward);
 
 def get_abs_speed(diff):
-    return max(1.8,min(4,78.75/(15.75+diff)))
+    return max(1.4,min(4,53.9/(8.9+abs(diff))))
 
 def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,heading):
     w_len = len(waypoints);
