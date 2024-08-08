@@ -95,7 +95,7 @@ def reward_function(params):
         dfc = 500/(1 + 100*abs(distance_from_center - dfc))
         dfc_reward = dfc_reward + dfc
     elif(abs(resp[1])>5):
-        dfc_reward=1e-9;
+        dfc_reward = 100/(1+distance_from_center);
     else:
         dfc_reward = 600/(1 + 100*(distance_from_center));
     steering_and_distance_from_center_reward = (dfc_reward + (500/(1+direction_diff)))
