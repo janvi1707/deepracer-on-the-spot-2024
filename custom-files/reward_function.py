@@ -47,11 +47,15 @@ def reward_function(params):
     angle_f2= angle_between_lines(prev_point_4[0],prev_point_4[1],prev_point_3[0],prev_point_3[1],prev_point_2[0],prev_point_2[1],prev_point[0],prev_point[1])
 
     reward = 1e-9
-    total_angle = (angle_f+angle_b+angle_f2)/3
+    total_angle = angle_f
     if total_angle >90:
         total_angle-=180
     elif total_angle <-90:
         total_angle+=180
+    if total_angle >30:
+        total_angle=30
+    elif total_angle <-30:
+        total_angle=-30
     if abs(total_angle)<=7:
         total_angle=0
     if next ==1 or prev==1 or (next+1)%waypoints_length ==1 or (next+2)%waypoints_length ==1 or (next+3)%waypoints_length ==1 or (next+4)%waypoints_length ==1 or (next+5)%waypoints_length ==1 or (next+6)%waypoints_length ==1 or (next+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
