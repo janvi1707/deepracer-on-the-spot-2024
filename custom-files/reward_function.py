@@ -39,6 +39,9 @@ def reward_function(params):
     prev_point = waypoints[prev]
     prev_point_2 = waypoints[(prev-1+waypoints_length)%waypoints_length]
 
+
+
+
     # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians
     track_direction = math.atan2(next_point_1[1] - prev_point[1], next_point_1[0] - prev_point[0])
     # Convert to degree
@@ -157,30 +160,8 @@ def reward_function(params):
             reward+=50
             if params['distance_from_center']<=0.2*params['track_width']:
                 reward+=50+params['speed']**3
-    if progress ==100:
-        if steps <=315:
-            reward+=2000
-        if steps <=305:
-            reward+=2000
-        if steps <=295:
-            reward+=1000
-        if steps <=285:
-            reward+=1000
-        if steps <=275:
-            reward+=1000
-        if steps <=265:
-            reward+=500
-    threshold_1=295
-    threshold_2=305
-    threshold_3=314
-    steps_t1= (threshold_1*progress)/100
-    steps_t2= (threshold_2*progress)/100
-    steps_t3= (threshold_3*progress)/100
-    if steps>=5 and steps%30==0:
-        if steps<= steps_t3:
-            reward+=900
-        if steps<= steps_t2:
-            reward+=300
-        if steps<= steps_t1:
-            reward+=300
+
+    if steps>0:
+        reward+= ((progress*70)/steps)**2
+
     return float(reward)
