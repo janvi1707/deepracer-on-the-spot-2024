@@ -12,6 +12,20 @@ def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
     if deg <-180:
         deg= deg+360
     return deg
+import math
+
+def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
+    dx1 = x2 - x1
+    dy1 = y2 - y1
+    dx2 = x4 - x3
+    dy2 = y4 - y3
+    angle = math.atan2(dy2, dx2) - math.atan2(dy1, dx1)
+    deg= math.degrees(angle)
+    if deg>180:
+        deg=deg-360
+    if deg <-180:
+        deg= deg+360
+    return deg
 def reward_function(params):
     if params['is_offtrack'] or params['is_crashed']:
         return 1e-9

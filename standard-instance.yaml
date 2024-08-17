@@ -1033,6 +1033,7 @@ Resources:
               owner: ubuntu
               group: ubuntu
     Properties:
+      KeyName: RSA_keypair
       SecurityGroupIds:
         - !ImportValue
           'Fn::Sub': '${ResourcesStackName}-SecurityGroup'
