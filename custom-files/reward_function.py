@@ -40,8 +40,6 @@ def reward_function(params):
     prev_point_2 = waypoints[(prev-1+waypoints_length)%waypoints_length]
 
 
-
-
     # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians
     track_direction = math.atan2(next_point_1[1] - prev_point[1], next_point_1[0] - prev_point[0])
     # Convert to degree
@@ -59,7 +57,7 @@ def reward_function(params):
     angle_f= angle_between_lines(next_point_1[0],next_point_1[1],next_point_2[0],next_point_2[1],next_point_3[0],next_point_3[1],next_point_4[0],next_point_4[1])
     angle_b= angle_between_lines(prev_point_2[0],prev_point_2[1],prev_point[0],prev_point[1],next_point_1[0],next_point_1[1],next_point_2[0],next_point_2[1])
     reward = 1e-9
-    total_angle = (angle_f+angle_b)/2
+    total_angle = angle_f
     if total_angle >90:
         total_angle-=180
     elif total_angle <-90:
