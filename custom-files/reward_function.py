@@ -163,11 +163,21 @@ def reward_function(params):
     #     reward+= ((progress*70)/steps)**2
 
 
-    expected_steps= progress*3.00
-    if steps>0:
-        if steps<=expected_steps:
-            reward+=500
+    expected_steps1= progress*3.00
+    expected_steps2= progress*3.30
+    expected_steps3= progress*3.40
+
+    if abs(expected_steps3-steps)>7:
+        reward= 2*reward/(1+abs((expected_steps3-steps)**2))
+
+    if steps>0 and steps%10==0:
+        if steps<=expected_steps1:
+            reward+=4000
+        elif steps<=expected_steps2:
+            reward+=2000
+        elif steps<=expected_steps3:
+            reward+=700
         else:
-            reward= 2*reward/(1+abs((expected_steps-steps)**2))
+            reward= 2*reward/(1+abs((expected_steps3-steps)**2))
 
     return float(reward)
