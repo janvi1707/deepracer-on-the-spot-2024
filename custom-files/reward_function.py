@@ -93,23 +93,23 @@ def reward_function(params):
         if params['speed'] >=4.4:
             reward+=15
     elif next not in curve_points:
-        if params['speed'] >=2.0:
-            reward+=10
-        if params['speed'] >=2.2:
-            reward+=20
         if params['speed'] >=2.4:
-            reward+=30
+            reward+=10
         if params['speed'] >=2.6:
-            reward+=30
+            reward+=20
         if params['speed'] >=2.8:
-            reward+=20
+            reward+=30
         if params['speed'] >=3.0:
-            reward+=20
+            reward+=30
         if params['speed'] >=3.2:
+            reward+=20
+        if params['speed'] >=3.4:
+            reward+=20
+        if params['speed'] >=3.5:
             reward+=5
     elif abs(total_angle) <=20:
         opt_speed= 5*math.tanh(10/(1+abs(total_angle)))
-        opt_speed=max(1.9,opt_speed)
+        opt_speed=max(2.2,opt_speed)
         reward+=(5-abs(params['speed']-opt_speed))**3
     else:
         opt_speed= 5*math.tanh(8/(1+abs(total_angle)))
@@ -162,5 +162,12 @@ def reward_function(params):
     # if steps>0:
     #     reward+= ((progress*70)/steps)**2
 
+
+    expected_steps= progress*3.00
+    if steps>0:
+        if steps<=expected_steps:
+            reward+=500
+        else:
+            reward+= 160/(1+abs((expected_steps-steps)**2))
 
     return float(reward)
