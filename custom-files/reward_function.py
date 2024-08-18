@@ -168,6 +168,6 @@ def reward_function(params):
         if steps<=expected_steps:
             reward+=500
         else:
-            reward+= 160/(1+abs((expected_steps-steps)**2))
+            reward= 2*reward/(1+abs((expected_steps-steps)**2))
 
     return float(reward)
