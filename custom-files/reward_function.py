@@ -140,6 +140,6 @@ def reward_function(params):
         heading_diff = heading_diff+360;
     
     if(abs(resp[1])<=7):
-        return float(speed_reward) * float(steering_reward) * (500/(1+ 10*abs(heading_diff))) * float(progress_reward(params)) * 0.0000001;
+        return ((float(speed_reward)+float(dfc_reward))**2 + float(steering_reward)) * 0.001;
     else:
-        return float(steering_and_distance_from_center_reward)*float(speed_reward)*float(progress_reward(params)) * 0.00001;
+        return (float(steering_and_distance_from_center_reward)**2 + float(speed_reward)) * 0.001;
