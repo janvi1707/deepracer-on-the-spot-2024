@@ -16,8 +16,6 @@ def reward_function(params):
     if params['is_offtrack'] or params['is_crashed']:
         return 1e-9
     waypoints = params['waypoints']
-    steps=params['steps']
-    progress = params['progress']
     closest_waypoints = params['closest_waypoints']    
     left_turn=[14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,53,54,55,56,57,58,59,60,61,62,76,77,78,79,80,99,100,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,186,187,188,189,190,191,192,193,194,195]
     right_turn=[134,135,136,137,138,139,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161]
