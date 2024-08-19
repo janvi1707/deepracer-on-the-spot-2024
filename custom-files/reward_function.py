@@ -87,17 +87,18 @@ def reward_function(params):
         dfc_reward = dfc_reward + dfc
     elif(resp[1]>5 and is_left_of_center):
         dfc_reward=100;
-        dfc = track_width * (abs(resp[1])/50)
+        dfc = track_width * (abs(resp[1])/60)
         dfc = 500/(1 + 100*abs(distance_from_center - dfc))
         dfc_reward = dfc_reward + dfc
     elif(abs(resp[1])>5):
         dfc_reward = 100/(1+(distance_from_center/track_width));
     else:
         dfc_reward = 600/(1 + 100*(distance_from_center));
-    steering_and_distance_from_center_reward = (dfc_reward + (500/(1+direction_diff)))
+    steering_reward = (500/(1+direction_diff))
+    steering_and_distance_from_center_reward = (dfc_reward +steering_reward)
     speed_reward = 0;
     max_speed = 0;
-    if(abs(resp[1])<=5):
+    if(abs(resp[1])<=7):
         if(speed>2):
             max_speed = 2;
             speed_reward=speed_reward+100;
@@ -135,7 +136,7 @@ def reward_function(params):
     elif(heading_diff<-180):
         heading_diff = heading_diff+360;
     
-    if(abs(resp[1])<=5):
-        return float(speed_reward) * (500/(1+ 10*abs(heading_diff))) * float(progress_reward(params)) * 0.00001;
+    if(abs(resp[1])<=7):
+        return float(speed_reward) * float(steering_reward) * (500/(1+ 10*abs(heading_diff))) * float(progress_reward(params)) * 0.00001;
     else:
         return float(steering_and_distance_from_center_reward)*float(speed_reward)*float(progress_reward(params)) * 0.00001;
