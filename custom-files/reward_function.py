@@ -4,7 +4,7 @@ import math
 def progress_reward(params):
     progress = params['progress']
     reward = (progress)/100
-    return 200*(1+reward);
+    return 100;
 
 def get_abs_speed(diff):
     steer = abs(diff)
@@ -96,7 +96,7 @@ def reward_function(params):
     elif(abs(resp[1])>5):
         dfc_reward = 100/(1+(distance_from_center/track_width));
     else:
-        dfc_reward = 600/(1 + 100*(distance_from_center));
+        dfc_reward = 600/(1 + (distance_from_center/track_width));
     steering_reward = (500/(1+direction_diff))
     steering_and_distance_from_center_reward = (dfc_reward +steering_reward)
     speed_reward = 0;
