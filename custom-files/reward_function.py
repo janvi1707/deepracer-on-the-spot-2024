@@ -109,22 +109,13 @@ def reward_function(params):
     req_steering_angle = resp[0];
     track_direction = resp[1];
     
-    direction_diff = abs(round(resp[0])-steering_angle)
-    if direction_diff>180:
-        direction_diff = 360-direction_diff;
-
-    direction_reward = direction_reward_impl(direction_diff);
-    distance_from_center_reward = 0;
-    
     if abs(track_direction)<=5:
         speed_reward = 0;
         heading_reward = 0;
         distance_from_center_reward = 0;
         steering_reward = 0;
 
-        speed_reward = 0;
         max_speed = 0;
-
         if(speed>2):
             max_speed = 2;
             speed_reward=speed_reward+100;
@@ -166,7 +157,7 @@ def reward_function(params):
         
         distance_from_center_reward = 500/(1+10*(distance_from_center/track_width));
         
-        return speed_reward + heading_reward + distance_from_center_reward + steering_reward;
+        return float(speed_reward + heading_reward + distance_from_center_reward + steering_reward)*0.01;
     else:
         req_speed = get_abs_speed(abs(req_steering_angle));
 
@@ -186,8 +177,8 @@ def reward_function(params):
             distance_from_center_reward = distance_from_center_reward + dfc
         else:
             dfc = track_width * min((abs(resp[0])/80),0.9)
-            distance_from_center_reward = 500/(1 + 10*(distance_from_center + dfc));
+            distance_from_center_reward = 100/(1 + 10*(distance_from_center + dfc));
         
         steering_reward = 500/(1 + round(abs(req_steering_angle-steering_angle)))
         
-        return speed_reward + distance_from_center_reward + steering_reward;
+        return float(speed_reward + distance_from_center_reward + steering_reward)*0.01;
