@@ -54,17 +54,11 @@ def reward_function(params):
     optimal_waypoints = smooth_central_line(waypoints, max_offset)
     next_index = int(closest_waypoints[1])
     next_point_1 = optimal_waypoints[next_index]
-    track_direction = math.atan2(next_point_1[1] - params['y'], next_point_1[0] - params['x'])
-    track_direction = math.degrees(track_direction)
-    direction_diff = round(track_direction - params['heading'],1)
-    print(direction_diff,next_point_1[0],next_point_1[1])
-    steering_reward = 100*(1/(1+abs(params['steering_angle'] - direction_diff)))
+    reward = 100/(1+ 50*math.sqrt((params['x']-next_point_1[0])**2 + (params['y']-next_point_1[1])**2))
     if params['steps'] > 0:
-        progress_reward =(params['progress'])/(params['steps'])+ params['progress']//2
+        progress_reward =(params['progress'])/(params['steps'])
         reward += progress_reward
     else:
         return 1e-3
-    if abs(params['steering_angle'])<10 and abs(direction_diff)>20 and direction_diff*params['steering_angle']<0:
-        return 1e-3
-    reward=reward+ steering_reward
+    reward=reward+ params['speed']**2
     return float(reward)
