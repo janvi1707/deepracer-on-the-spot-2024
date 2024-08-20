@@ -1,6 +1,5 @@
 import math
 
-
 def progress_reward(params):
     progress = params['progress']
     reward = (progress)/100
@@ -95,7 +94,7 @@ def reward_function(params):
         return 1e-9
     waypoints = params['waypoints']
     closest_waypoints = params['closest_waypoints']
-    track_width = int(params['track_width'])/2
+    track_width = params['track_width']/2
     heading = params['heading']
     speed = params['speed']
     steering_angle = params['steering_angle']
@@ -132,9 +131,12 @@ def reward_function(params):
             max_speed=4
             speed_reward = speed_reward+100;
         speed_reward = speed_reward + 100*((speed-max_speed)/0.5)
-
+        end = int(closest_waypoints[1])
+        start = int(closest_waypoints[0])
+        
         if(waypoints[start][0]==waypoints[end][0] and waypoints[start][1]==waypoints[end][1]):
             start = (len(waypoints)+start-1)%len(waypoints);
+        
         track_direction = math.atan2(waypoints[end][1]-waypoints[start][1],waypoints[end][0]-waypoints[start][0])
         track_direction = math.degrees(track_direction)
 
@@ -146,14 +148,9 @@ def reward_function(params):
 
         heading_reward = direction_reward_impl(abs(heading_diff));
 
-        
         steering_diff = abs(resp[1]-steering_angle);
-        if(steering_diff>180):
-            steering_diff = steering_diff-360;
-        elif(steering_diff<-180):
-            steering_diff = steering_diff+360;
 
-        steering_reward = 500/(1 + round(steering_diff));
+        steering_reward = 500/(1 + round(abs(steering_diff)));
         
         distance_from_center_reward = 500/(1+10*(distance_from_center/track_width));
         
