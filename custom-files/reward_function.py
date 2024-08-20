@@ -52,24 +52,19 @@ def reward_function(params):
     RACING_LINE_VS_CENTRAL_LINE = 0.90
     max_offset = track_width * RACING_LINE_VS_CENTRAL_LINE * 0.5
     optimal_waypoints = smooth_central_line(waypoints, max_offset)
-
-    next = int(closest_waypoints[1])
-    next_point_1 = optimal_waypoints[next]
-    # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians
+    next_index = int(closest_waypoints[1])
+    next_point_1 = optimal_waypoints[next_index]
     track_direction = math.atan2(next_point_1[1] - params['y'], next_point_1[0] - params['x'])
-    # Convert to degree
     track_direction = math.degrees(track_direction)
-    direction_diff = track_direction - params['heading']
-    print("waypoint_x : {},waypoint_y: {},optimal_x : {},optimal_y :{},direction_diff :{}".format(waypoints[next][0],waypoints[next][1],optimal_waypoints[next][0],optimal_waypoints[next][1],direction_diff))
-
+    direction_diff = round(track_direction - params['heading'],1)
+    print(direction_diff,next_point_1[0],next_point_1[1])
     steering_reward = 100*(1/(1+abs(params['steering_angle'] - direction_diff)))
     if params['steps'] > 0:
         progress_reward =(params['progress'])/(params['steps'])+ params['progress']//2
         reward += progress_reward
     else:
         return 1e-3
-    reward=reward+ steering_reward
-    
     if abs(params['steering_angle'])<10 and abs(direction_diff)>20 and direction_diff*params['steering_angle']<0:
         return 1e-3
+    reward=reward+ steering_reward
     return float(reward)
