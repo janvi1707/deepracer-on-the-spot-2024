@@ -127,7 +127,8 @@ def reward_function(params):
         dfc = 500/(1 + 10*abs(distance_from_center - dfc))
         distance_from_center_reward = distance_from_center_reward + dfc
     elif(abs(resp[1])>7):
-        distance_from_center_reward = 100/(1 + 100*(distance_from_center/track_width));
+        dfc = track_width * (abs(resp[1])/60)
+        distance_from_center_reward = 500/(1 + 10*(distance_from_center + dfc));
     else:
         distance_from_center_reward = 600/(1 + 100*(distance_from_center/track_width));
     
