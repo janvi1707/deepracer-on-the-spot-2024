@@ -220,7 +220,7 @@ def reward_function(params):
             reward+=300
     steps_weight =1
     if steps>5:
-        expected_steps = progress*3.15
+        expected_steps = progress*3.40
         if steps > expected_steps:
             steps_weight = 1 - ((4*(steps-expected_steps))/steps)
         if steps_weight <= 0.1:
