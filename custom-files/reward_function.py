@@ -44,6 +44,7 @@ def calc_distance(prev_point, next_point):
 def reward_function(params):
     if params['is_offtrack'] or params['is_crashed']:
         return 1e-9
+    reward = 1e-9
     waypoints = params['waypoints']
     closest_waypoints = params['closest_waypoints']
     # Calculate the direction of the center line based on the closest waypoints
@@ -58,7 +59,7 @@ def reward_function(params):
     track_direction = math.atan2(next_point_1[1] - params['y'], next_point_1[0] - params['x'])
     # Convert to degree
     track_direction = math.degrees(track_direction)
-    direction_diff = params['heading'] - track_direction
+    direction_diff = track_direction - params['heading']
     print("waypoint_x : {},waypoint_y: {},optimal_x : {},optimal_y :{},direction_diff :{}".format(waypoints[next][0],waypoints[next][1],optimal_waypoints[next][0],optimal_waypoints[next][1],direction_diff))
 
     steering_reward = 100*(1/(1+abs(params['steering_angle'] - direction_diff)))
@@ -66,7 +67,7 @@ def reward_function(params):
         progress_reward =(params['progress'])/(params['steps'])+ params['progress']//2
         reward += progress_reward
     else:
-        return 1e-9
+        return 1e-3
     reward=reward+ steering_reward
     
     if abs(params['steering_angle'])<10 and abs(direction_diff)>20 and direction_diff*params['steering_angle']<0:
