@@ -71,6 +71,9 @@ def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,he
     track_direction = math.degrees(track_direction)
     
     next_start = waypoints[int(closest_waypoints[1])]
+
+    if(next_start[0]==start[0] and next_start[1]==start[1]):
+        next_start = waypoints[(w_len + int(closest_waypoints[1]) + 1)%w_len]
     
     ideal_heading = math.atan2(next_start[1]-start[1],next_start[0]-start[0])
     ideal_heading = math.degrees(ideal_heading)
@@ -113,25 +116,15 @@ def reward_function(params):
     direction_reward = direction_reward_impl(direction_diff);
     distance_from_center_reward = 0;
     
-    if(resp[1]<-7 and not is_left_of_center):
-        distance_from_center_reward = 100;
-        dfc = track_width * (abs(resp[1])/60)
-        dfc = 500/(1 + 10*abs(distance_from_center - dfc))
-        distance_from_center_reward = distance_from_center_reward + dfc
-    elif(resp[1]>7 and is_left_of_center):
-        distance_from_center_reward = 100;
-        dfc = track_width * (abs(resp[1])/60)
-        dfc = 500/(1 + 10*abs(distance_from_center - dfc))
-        distance_from_center_reward = distance_from_center_reward + dfc
-    elif(abs(resp[1])>7):
-        dfc = track_width * (abs(resp[1])/60)
-        distance_from_center_reward = 500/(1 + 10*(distance_from_center + dfc));
-    else:
-        distance_from_center_reward = 600/(1 + 100*(distance_from_center/track_width));
-    
-    speed_reward = 0;
-    max_speed = 0;
-    if(abs(resp[1])<=7):
+    if abs(track_direction)<=5:
+        speed_reward = 0;
+        heading_reward = 0;
+        distance_from_center_reward = 0;
+        steering_reward = 0;
+
+        speed_reward = 0;
+        max_speed = 0;
+
         if(speed>2):
             max_speed = 2;
             speed_reward=speed_reward+100;
@@ -147,31 +140,54 @@ def reward_function(params):
         if(speed>4):
             max_speed=4
             speed_reward = speed_reward+100;
-            
         speed_reward = speed_reward + 100*((speed-max_speed)/0.5)
+
+        if(waypoints[start][0]==waypoints[end][0] and waypoints[start][1]==waypoints[end][1]):
+            start = (len(waypoints)+start-1)%len(waypoints);
+        track_direction = math.atan2(waypoints[end][1]-waypoints[start][1],waypoints[end][0]-waypoints[start][0])
+        track_direction = math.degrees(track_direction)
+
+        heading_diff = track_direction-heading
+        if(heading_diff>180):
+            heading_diff = heading_diff-360;
+        elif(heading_diff<-180):
+            heading_diff = heading_diff+360;
+
+        heading_reward = direction_reward_impl(abs(heading_diff));
+
+        
+        steering_diff = abs(resp[1]-steering_angle);
+        if(steering_diff>180):
+            steering_diff = steering_diff-360;
+        elif(steering_diff<-180):
+            steering_diff = steering_diff+360;
+
+        steering_reward = 500/(1 + round(steering_diff));
+        
+        distance_from_center_reward = 500/(1+10*(distance_from_center/track_width));
+        
+        return speed_reward + heading_reward + distance_from_center_reward + steering_reward;
     else:
-        req_speed = get_abs_speed(abs(resp[0]))
-        speed_reward = 500/(1+10*abs(req_speed-speed))
-    
-    start = int(closest_waypoints[0]);
-    end = int(closest_waypoints[1]);
-    if(waypoints[start][0]==waypoints[end][0] and waypoints[start][1]==waypoints[end][1]):
-        start = (len(waypoints)+start-1)%len(waypoints);
-    track_direction = math.atan2(waypoints[end][1]-waypoints[start][1],waypoints[end][0]-waypoints[start][0])
-    track_direction = math.degrees(track_direction)
+        req_speed = get_abs_speed(abs(req_steering_angle));
 
-    heading_diff = track_direction-heading
-
-
-    print("Calculated Steering {}, Track direction : {} , Heading diff : {}".format(resp[0],resp[1],heading_diff))
-    if(heading_diff>180):
-        heading_diff = heading_diff-360;
-    elif(heading_diff<-180):
-        heading_diff = heading_diff+360;
-
-    heading_reward = direction_reward_impl(abs(heading_diff));
-    
-    if(abs(resp[1])<=7):
-        return (((5*speed_reward+3*distance_from_center_reward+3*heading_reward)/11)**2 + direction_reward) * 0.0001;
-    else:
-        return ((direction_reward+distance_from_center_reward)**2 + speed_reward) * 0.0001;
+        speed_reward = 500/(1+ abs(speed-req_speed));
+        distance_from_center_reward = 0;
+        steering_reward = 0;
+        
+        if(track_direction<0 and not is_left_of_center):
+            distance_from_center_reward = 100;
+            dfc = track_width * min((abs(resp[0])/80),0.9)
+            dfc = 500/(1 + 10*abs(distance_from_center - dfc))
+            distance_from_center_reward = distance_from_center_reward + dfc
+        elif(track_direction>0 and is_left_of_center):
+            distance_from_center_reward = 100;
+            dfc = track_width * min((abs(resp[0])/80),0.9)
+            dfc = 500/(1 + 10*abs(distance_from_center - dfc))
+            distance_from_center_reward = distance_from_center_reward + dfc
+        else:
+            dfc = track_width * min((abs(resp[0])/80),0.9)
+            distance_from_center_reward = 500/(1 + 10*(distance_from_center + dfc));
+        
+        steering_reward = 500/(1 + round(abs(req_steering_angle-steering_angle)))
+        
+        return speed_reward + distance_from_center_reward + steering_reward;
