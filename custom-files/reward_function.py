@@ -172,6 +172,6 @@ def reward_function(params):
     heading_reward = direction_reward(abs(heading_diff));
     
     if(abs(resp[1])<=7):
-        return (((5*float(speed_reward)+3*float(distance_from_center_reward)+3*float(heading_reward))/11)**2 + float(direction_reward)) * 0.0001;
+        return (((5*speed_reward+3*distance_from_center_reward+3*heading_reward)/11)**2 + direction_reward) * 0.0001;
     else:
-        return ((float(direction_reward)+float(distance_from_center_reward))**2 + float(speed_reward)) * 0.0001;
+        return ((direction_reward+distance_from_center_reward)**2 + speed_reward) * 0.0001;
