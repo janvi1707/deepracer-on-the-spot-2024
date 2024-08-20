@@ -6,7 +6,7 @@ def progress_reward(params):
     reward = (progress)/100
     return 100;
     
-def direction_reward(direction_diff):
+def direction_reward_impl(direction_diff):
     direction_reward = 0;
     max_angle = 30;
     if(direction_diff<=30):
@@ -27,10 +27,7 @@ def direction_reward(direction_diff):
     if(direction_diff<=5):
         direction_reward += 100;
         max_angle = 0;
-    
-        
     direction_reward = direction_reward + (100/(1+(direction_diff-max_angle)));
-
     return direction_reward;
     
 def get_abs_speed(diff):
@@ -113,7 +110,7 @@ def reward_function(params):
     if direction_diff>180:
         direction_diff = 360-direction_diff;
 
-    direction_reward = direction_reward(direction_diff);
+    direction_reward = direction_reward_impl(direction_diff);
     distance_from_center_reward = 0;
     
     if(resp[1]<-7 and not is_left_of_center):
