@@ -169,7 +169,7 @@ def reward_function(params):
     elif(heading_diff<-180):
         heading_diff = heading_diff+360;
 
-    heading_reward = direction_reward(abs(heading_diff));
+    heading_reward = direction_reward_impl(abs(heading_diff));
     
     if(abs(resp[1])<=7):
         return (((5*speed_reward+3*distance_from_center_reward+3*heading_reward)/11)**2 + direction_reward) * 0.0001;
