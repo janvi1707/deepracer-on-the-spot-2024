@@ -1,7 +1,5 @@
 import math
 
-prev_steer = None
-
 def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
     dx1 = x2 - x1
     dy1 = y2 - y1
@@ -15,22 +13,19 @@ def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
         deg= deg+360
     return deg
 def reward_function(params):
-    global prev_steer
     if params['is_offtrack'] or params['is_crashed']:
         return 1e-9
     waypoints = params['waypoints']
     steps=params['steps']
     progress = params['progress']
     closest_waypoints = params['closest_waypoints']    
-    left_turn=[14,15,16,17,18,19,20,21,22,23,24,25,26,27,53,54,55,56,57,58,59,60,61,77,78,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,187,188,189,190,191,192,193,194]
-    right_turn=[135,136,137,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159]
-    straight_waypoints=[33,44,66,72,85,94,130,171]
-    not_very_right_waypoints=[89,90,91,132,133,134,138,139,140,141,142,143,144,160,161,162,163]
-    not_very_left=[9,10,11,12,13,28,29,30,52,62,74,75,76,79,80,81,82,97,98,99,123,124,125,183,184,185,186,195,196,197,198]
-    basic_left=[1,2,3,4,5,6,7,8,31,32,45,46,47,48,49,50,51,63,64,65,73,83,84,95,96,126,127,128,129,172,173,174,175,176,177,178,179,180,181,182,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213]
-    basic_right=[34,35,36,37,38,39,40,41,42,43,67,68,69,70,71,86,87,88,92,93,131,164,165,166,167,168,169,170]
-    straight_lines=[30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,200,201,202,203,204,205,206,207,208,209,210,211,212,213,1,2,3,4,5]
-
+    left_turn=[14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,53,54,55,56,57,58,59,60,61,62,76,77,78,79,80,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,185,186,187,188,189,190,191,192,193,194,195]
+    right_turn=[134,135,136,137,138,139,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161]
+    straight_waypoints=[1,2,3,33,43,44,65,66,85,94,129,130,169,205,206,207,208,209,210,211,212,213]
+    not_very_right_waypoints=[36,37,38,39,40,41,67,68,69,70,88,89,90,91,92,132,133,140,141,142,143,144,162,163,164,165,166]
+    not_very_left=[8,9,10,11,12,13,30,48,49,50,51,52,63,73,74,75,81,82,83,96,97,98,125,126,127,176,177,178,179,180,181,182,183,184,196,197,198,199,200,201]
+    basic_left=[4,5,6,7,31,32,45,46,47,64,72,84,95,128,170,171,172,173,174,175,202,203,204]
+    basic_right=[34,35,42,71,86,87,93,131,167,168]
     curve_points= left_turn + right_turn
     almost_straight= basic_left + basic_right
     # Calculate the direction of the center line based on the closest waypoints
@@ -73,21 +68,13 @@ def reward_function(params):
     if next ==1 or prev==1 or (next+1)%waypoints_length ==1 or (next+2)%waypoints_length ==1 or (next+3)%waypoints_length ==1 or (next+4)%waypoints_length ==1 or (next+5)%waypoints_length ==1 or (next+6)%waypoints_length ==1 or (next+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
         total_angle = 0
     steering_reward=1e-4
-
-    if prev_steer is not None:
-        if next_point_1 in straight_lines and prev_point in straight_lines:
-            if abs(prev_steer-params['steering_angle'])<3:
-                steering_reward=160
-        elif next not in curve_points:
-            steering_reward = 150*math.tanh(10/(1+abs(straight_direction_diff - total_angle)))
-        else:
-            steering_reward = 150*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
+    if next not in curve_points:
+        steering_reward = 160*math.tanh(10/(1+abs(straight_direction_diff - total_angle)))
+    else:
+        steering_reward = 160*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
 
     reward=reward+ steering_reward
-
-    more_speed_points=straight_lines+straight_waypoints+almost_straight
-
-    if next in more_speed_points:
+    if next in straight_waypoints or next in almost_straight:
         if params['speed'] >=2.8:
             reward+=10
         if params['speed'] >=3:
@@ -163,24 +150,17 @@ def reward_function(params):
     if next in basic_left:
         if params['is_left_of_center'] or params['distance_from_center']==0:
             reward+=50
-            if params['distance_from_center']<=0.3*params['track_width']:
+            if params['distance_from_center']<=0.2*params['track_width']:
                 reward+=50+params['speed']**3
     if next in basic_right:
         if not params['is_left_of_center'] or params['distance_from_center']==0:
             reward+=50
-            if params['distance_from_center']<=0.3*params['track_width']:
+            if params['distance_from_center']<=0.2*params['track_width']:
                 reward+=50+params['speed']**3
     
     if steps>0:
         step_reward= ((progress*25)/steps)**3
 
     reward+=step_reward
-
-    prev_steer=params['steering_angle']
-
-    if prev_steer is not None:
-        print("janvi : steeer angle",prev_steer)
-    else:
-        print("prev_steering null")
-
+    
     return float(reward)
