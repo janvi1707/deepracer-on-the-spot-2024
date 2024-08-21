@@ -180,8 +180,7 @@ def reward_function(params):
             dfc = 500/(1 + 100*abs(distance_from_center - dfc))
             distance_from_center_reward = distance_from_center_reward + dfc
         else:
-            dfc = track_width * min((abs(resp[1])/55),0.9)
-            distance_from_center_reward = 500/(1 + 10*(dfc));
+            distance_from_center_reward = 500/(1 + 10*distance_from_center);
         
         steering_reward = 500/(1 + 10*abs(req_steering_angle-steering_angle))
         
