@@ -159,9 +159,7 @@ def reward_function(params):
         if(distance_from_center<0.8*track_width):
             distance_from_center_reward+=50;
         if(distance_from_center<0.5*track_width):
-            distance_from_center_reward+=50;
-        if(distance_from_center<0.3*track_width):
-            distance_from_center_reward+=50;
+            distance_from_center_reward+=100;
         
         return float(speed_reward + heading_reward + distance_from_center_reward + steering_reward)*0.01;
     else:
