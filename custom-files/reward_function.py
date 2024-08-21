@@ -41,6 +41,37 @@ def calc_distance(prev_point, next_point):
     delta_x = next_point[0] - prev_point[0]
     delta_y = next_point[1] - prev_point[1]
     return math.hypot(delta_x, delta_y)
+def orientation(x1,y1,x2,y2, x3, y3):
+     
+    # to find the orientation of 
+    # an ordered triplet (p1,p2,p3)
+    # function returns the following values:
+    # 0 : Collinear points
+    # 1 : Clockwise points
+    # 2 : Counterclockwise
+    val = (float(y2 - y1) * (x3 - x2)) - \
+           (float(x2 - x1) * (y3 - y2))
+    if (val > 0):
+         
+        # Clockwise orientation
+        return False
+    elif (val < 0):
+         
+        # Counterclockwise orientation
+        return True
+    else:
+         
+        # Collinear orientation
+        return True if x2 == (x1+x3)/2 and y2 ==(y1+y3)/2 else False
+def eucledian_distance(x1,y1,x2,y2):
+    return math.sqrt((x1-x2)**2 + (y1-y2)**2)
+def closest_distance(x,y,optimal_waypoints):
+    opt_len = len(optimal_waypoints)
+    dist = 10000
+    for i in range(0,opt_len):
+        if orientation(x,y,optimal_waypoints[i][0],optimal_waypoints[i][1],optimal_waypoints[(i+1)%opt_len][0],optimal_waypoints[(i+1)%opt_len][1]):
+            dist = min(dist,eucledian_distance(x,y,optimal_waypoints[i][0],optimal_waypoints[i][1]))
+    return dist if dist!=10000 else -1
 def reward_function(params):
     if params['is_offtrack'] or params['is_crashed']:
         return 1e-9
@@ -52,9 +83,11 @@ def reward_function(params):
     RACING_LINE_VS_CENTRAL_LINE = 0.90
     max_offset = track_width * RACING_LINE_VS_CENTRAL_LINE * 0.5
     optimal_waypoints = smooth_central_line(waypoints, max_offset)
-    next_index = int(closest_waypoints[1])
-    next_point_1 = optimal_waypoints[next_index]
-    reward = 100/(1+ 50*math.sqrt((params['x']-next_point_1[0])**2 + (params['y']-next_point_1[1])**2))
+    dist = closest_distance(params['x'],params['y'],optimal_waypoints)
+    reward =1e-9
+    print(dist)
+    if dist!=-1:
+        reward = 100/(1+ 5*closest_distance(params['x'],params['y'],optimal_waypoints))
     if params['steps'] > 0:
         progress_reward =(params['progress'])/(params['steps'])
         reward += progress_reward
