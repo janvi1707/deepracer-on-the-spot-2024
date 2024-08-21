@@ -173,18 +173,18 @@ def reward_function(params):
         
         if(track_direction<0 and not is_left_of_center):
             distance_from_center_reward = 100;
-            dfc = track_width * min((abs(resp[0])/80),0.9)
+            dfc = track_width * min((abs(resp[0])/70),0.8)
             dfc = 500/(1 + 10*abs(distance_from_center - dfc))
             distance_from_center_reward = distance_from_center_reward + dfc
         elif(track_direction>0 and is_left_of_center):
             distance_from_center_reward = 100;
-            dfc = track_width * min((abs(resp[0])/80),0.9)
+            dfc = track_width * min((abs(resp[0])/70),0.8)
             dfc = 500/(1 + 10*abs(distance_from_center - dfc))
             distance_from_center_reward = distance_from_center_reward + dfc
         else:
-            dfc = track_width * min((abs(resp[0])/80),0.9)
-            distance_from_center_reward = 100/(1 + 10*(distance_from_center + dfc));
+            dfc = track_width * min((abs(resp[0])/70),0.8)
+            distance_from_center_reward = 600/(1 + 10*(distance_from_center + dfc));
         
-        steering_reward = 500/(1 + round(abs(req_steering_angle-steering_angle)))
+        steering_reward = 500/(1 + 10*abs(req_steering_angle-steering_angle))
         
         return float(speed_reward + distance_from_center_reward + steering_reward)*0.01;
