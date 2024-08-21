@@ -150,9 +150,18 @@ def reward_function(params):
 
         steering_diff = abs(resp[1]-steering_angle);
 
-        steering_reward = 500/(1 + round(abs(steering_diff)));
+        steering_reward = 500/(1 + 10*round(abs(steering_diff)));
         
-        distance_from_center_reward = 500/(1+10*(distance_from_center/track_width));
+        distance_from_center_reward = 0;
+
+        if(distance_from_center<track_width):
+            distance_from_center_reward+=50;
+        if(distance_from_center<0.8*track_width):
+            distance_from_center_reward+=50;
+        if(distance_from_center<0.5*track_width):
+            distance_from_center_reward+=50;
+        if(distance_from_center<0.3*track_width):
+            distance_from_center_reward+=50;
         
         return float(speed_reward + heading_reward + distance_from_center_reward + steering_reward)*0.01;
     else:
