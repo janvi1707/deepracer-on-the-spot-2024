@@ -168,7 +168,7 @@ def reward_function(params):
         speed_reward = 500/(1+ abs(speed-req_speed));
         distance_from_center_reward = 0;
         steering_reward = 0;
-        print("Required Steering : {}, Track Direction : {}, Waypoint : {}".format(resp[0],resp[1],int(closest_waypoints[0])))
+        
         if(track_direction<0 and not is_left_of_center):
             distance_from_center_reward = 100;
             dfc = track_width * min((abs(resp[1])/55),0.9)
@@ -181,7 +181,7 @@ def reward_function(params):
             distance_from_center_reward = distance_from_center_reward + dfc
         else:
             dfc = track_width * min((abs(resp[1])/55),0.9)
-            distance_from_center_reward = 600/(1 + 10*(distance_from_center + dfc));
+            distance_from_center_reward = 500/(1 + 10*(distance_from_center + dfc));
         
         steering_reward = 500/(1 + 10*abs(req_steering_angle-steering_angle))
         
