@@ -56,7 +56,7 @@ def reward_function(params):
         total_angle=30
     elif total_angle <-30:
         total_angle=-30
-    if abs(total_angle)<=7:
+    if abs(total_angle)<5:
         total_angle=0
     if next ==1 or prev==1 or (next+1)%waypoints_length ==1 or (next+2)%waypoints_length ==1 or (next+3)%waypoints_length ==1 or (next+4)%waypoints_length ==1 or (next+5)%waypoints_length ==1 or (next+6)%waypoints_length ==1 or (next+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
         total_angle =0
@@ -72,7 +72,13 @@ def reward_function(params):
     if direction_diff <=10.0:
         reward+=10.0
     if abs(total_angle)<=7:
-        if params['speed'] >=3:
+        if params['speed'] >=2.5:
+            reward+=30
+        if params['speed'] >=2.7:
+            reward+=30
+        if params['speed'] >=2.9:
+            reward+=30
+        if params['speed'] >=3.2:
             reward+=30
         if params['speed'] >=3.4:
             reward+=30
@@ -85,12 +91,10 @@ def reward_function(params):
         if params['speed'] >=4.4:
             reward+=50
     else:
-        opt_speed= 5*math.tanh(8/(1+abs(total_angle)))
-        opt_speed=max(1.2,opt_speed)
+        opt_speed= 5*math.tanh(10/(1+abs(total_angle)))
+        opt_speed=max(1.4,opt_speed)
         reward+=(5-abs(params['speed']-opt_speed))**2
         
-    if abs(params['steering_angle']-total_angle) >=10:
-        reward*=0.25
     if abs(params['steering_angle'])<10 and abs(total_angle)>20:
         return 1e-3
     if total_angle >10 and params['is_left_of_center']:
@@ -99,18 +103,19 @@ def reward_function(params):
         reward+=100.0
     if abs(params['steering_angle'])>=25 and abs(total_angle)>=25 and total_angle*params['steering_angle']>=0:
         reward+=100.0
-    if abs(params['steering_angle'])>7 and abs(total_angle)<9 and total_angle*params['steering_angle']>=0:
-        return 1e-3
-    if total_angle>26 and params['is_left_of_center']:
-        reward+=30.0
-    if total_angle<-26 and not params['is_left_of_center']:
-        reward+=30.0
+
+    # if total_angle>26 and params['is_left_of_center']:
+    #     reward+=30.0
+    # if total_angle<-26 and not params['is_left_of_center']:
+    #     reward+=30.0
 
     steps=params['steps']
     progress= params['progress']
     if steps>0:
-        step_reward= ((progress*20)/steps)**3
+        step_reward= ((progress*25)/steps)**3
 
     reward+=step_reward
 
+    if abs(params['steering_angle']-total_angle) >=10:
+        reward*=0.25
     return float(reward)
