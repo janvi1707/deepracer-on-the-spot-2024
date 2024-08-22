@@ -171,12 +171,12 @@ def reward_function(params):
         
         if(track_direction<0 and not is_left_of_center):
             distance_from_center_reward = 100;
-            dfc = track_width * min((abs(resp[1])/55),0.9)
+            dfc = track_width * min((abs(resp[1])/40),0.9)
             dfc = 500/(1 + 100*abs(distance_from_center - dfc))
             distance_from_center_reward = distance_from_center_reward + dfc
         elif(track_direction>0 and is_left_of_center):
             distance_from_center_reward = 100;
-            dfc = track_width * min((abs(resp[1])/55),0.9)
+            dfc = track_width * min((abs(resp[1])/40),0.9)
             dfc = 500/(1 + 100*abs(distance_from_center - dfc))
             distance_from_center_reward = distance_from_center_reward + dfc
         else:
