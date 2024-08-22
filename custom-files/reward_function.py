@@ -108,7 +108,7 @@ def reward_function(params):
     req_steering_angle = resp[0];
     track_direction = resp[1];
     
-    if abs(track_direction)<=5:
+    if abs(track_direction)<=15:
         speed_reward = 0;
         heading_reward = 0;
         distance_from_center_reward = 0;
@@ -148,7 +148,7 @@ def reward_function(params):
 
         heading_reward = direction_reward_impl(abs(heading_diff));
 
-        steering_diff = abs(resp[1]-steering_angle);
+        steering_diff = abs(steering_angle);
 
         steering_reward = 500/(1 + 10*round(abs(steering_diff)));
         
