@@ -38,7 +38,7 @@ def get_abs_speed(diff):
 def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,heading):
     w_len = len(waypoints);
     start = int(closest_waypoints[0]);
-    end = int(closest_waypoints[1]+20);
+    end = int(closest_waypoints[1]+10);
     resp = int(closest_waypoints[1])
     while(start<=end):
         mid = (start+end)//2
@@ -108,7 +108,7 @@ def reward_function(params):
     req_steering_angle = resp[0];
     track_direction = resp[1];
     
-    if abs(track_direction)<=15:
+    if abs(track_direction)<=10:
         speed_reward = 0;
         heading_reward = 0;
         distance_from_center_reward = 0;
