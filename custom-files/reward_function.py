@@ -27,7 +27,7 @@ def direction_reward_impl(direction_diff):
         direction_reward += 100;
         max_angle = 0;
     direction_reward = direction_reward + (100/(1+(direction_diff-max_angle)));
-    return direction_reward;
+    return 10 * direction_reward;
     
 def get_abs_speed(diff):
     steer = abs(diff)
@@ -212,7 +212,7 @@ def reward_function(params):
         if(distance_from_center<=0.5*track_width):
             distance_from_center_reward+=100;
         
-        return float(speed_reward + distance_from_center_reward + steering_reward)*0.001;
+        return float(speed_reward + distance_from_center_reward + steering_reward + heading_reward)*0.001;
     else:
         req_speed = get_abs_speed(abs(req_steering_angle));
 
