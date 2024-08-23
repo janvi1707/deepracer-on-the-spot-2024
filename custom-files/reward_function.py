@@ -168,33 +168,18 @@ def reward_function(params):
         distance_from_center_reward = 0;
         steering_reward = 0;
         
-        max_speed = 0;
-        max_speed_reward_value = 1;
-        if(speed>1.4):
-            max_speed=1.4
-            max_speed_reward_value = 5;
-            speed_reward=speed_reward+5;
-        if(speed>2):
-            max_speed = 2;
-            max_speed_reward_value = 100;
-            speed_reward=speed_reward+100;
-        if(speed>2.5):
-            max_speed = 2.5;
-            max_speed_reward_value = 100;
-            speed_reward=speed_reward+100;
-        if(speed>3):
-            max_speed = 3;
-            max_speed_reward_value = 100;
-            speed_reward=speed_reward+100;
-        if(speed>3.5):
-            max_speed = 3.5
-            max_speed_reward_value = 100;
-            speed_reward=speed_reward+100;
-        if(speed>4):
-            max_speed=4
-            max_speed_reward_value = 100;
-            speed_reward = speed_reward+100;
-        speed_reward = speed_reward + max_speed_reward_value*((speed-max_speed)/0.5)
+        req_speed = get_abs_speed(abs(resp[1]));
+        min_speed = get_abs_speed(15);
+        max_speed = get_abs_speed(5);
+        diff = max_speed - min_speed+10;
+
+
+        if(speed <= min_speed):
+            speed_reward = 1e-4;
+        elif(speed >= max_speed):
+            speed_reward = 1e-4;
+        else:
+            speed_reward = 10000 * math.cos(math.radians((90 * abs(speed-req_speed))/diff))
 
         
         end = int(closest_waypoints[1])
