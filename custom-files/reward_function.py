@@ -1,5 +1,4 @@
 import math
-import numpy as np
 
 def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
     dx1 = x2 - x1
@@ -13,78 +12,25 @@ def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
     if deg <-180:
         deg= deg+360
     return deg
-def smooth_central_line(center_line, max_offset, pp=0.10, p=0.05, c=0.70, n=0.05, nn=0.10, iterations=72, skip_step=1):
-    if max_offset < 0.0001:
-        return center_line
-    if skip_step < 1:
-        skip_step = 1
-    smoothed_line = center_line
-    for i in range(0, iterations):
-        smoothed_line = smooth_central_line_internal(center_line, max_offset, smoothed_line, pp, p, c, n, nn, skip_step)
-    return smoothed_line
-
-def smooth_central_line_internal(center_line, max_offset, smoothed_line, pp, p, c, n, nn, skip_step):
-    length = len(center_line)
-    new_line = [[0.0 for _ in range(2)] for _ in range(length)]
-    for i in range(0, length):
-        wpp = smoothed_line[(i - 2 * skip_step + length) % length]
-        wp = smoothed_line[(i - skip_step + length) % length]
-        wc = smoothed_line[i]
-        wn = smoothed_line[(i + skip_step) % length]
-        wnn = smoothed_line[(i + 2 * skip_step) % length]
-        new_line[i][0] = pp * wpp[0] + p * wp[0] + c * wc[0] + n * wn[0] + nn * wnn[0]
-        new_line[i][1] = pp * wpp[1] + p * wp[1] + c * wc[1] + n * wn[1] + nn * wnn[1]
-        while calc_distance(new_line[i], center_line[i]) >= max_offset:
-            new_line[i][0] = (0.98 * new_line[i][0]) + (0.02 * center_line[i][0])
-            new_line[i][1] = (0.98 * new_line[i][1]) + (0.02 * center_line[i][1])
-    return new_line
-def calc_distance(prev_point, next_point):
-    delta_x = next_point[0] - prev_point[0]
-    delta_y = next_point[1] - prev_point[1]
-    return math.hypot(delta_x, delta_y)
-
-def eucledian_distance(x1,y1,x2,y2):
-    return math.sqrt((x1-x2)**2 + (y1-y2)**2)
-def angle(x1,y1,x2,y2):
-    return math.degrees(math.atan2(y2-y1,x2-x1))
-def closest_distance(x,y,optimal_waypoints,ac_x,ac_y):
-    opt_len = len(optimal_waypoints)
-    list = []
-    for i in range(0,opt_len):
-        list.append((eucledian_distance(x,y,optimal_waypoints[i][0],optimal_waypoints[i][1]),optimal_waypoints[i][0],optimal_waypoints[i][1],i))
-    dist = sorted(list, key = lambda x: x[0])
-    print("Two closest points:",dist[0],dist[1])
-    if eucledian_distance(ac_x,ac_y,dist[0][1],dist[0][2]) < eucledian_distance(ac_x,ac_y,dist[1][1],dist[1][2]):
-        print("Closest optimal point :", dist[0])
-        return dist[0][3]
-    else:
-        print("Closest optimal point :",dist[1])
-        return dist[1][3]
-
 def reward_function(params):
     if params['is_offtrack'] or params['is_crashed']:
         return 1e-9
-    reward = 1e-9
     waypoints = params['waypoints']
     closest_waypoints = params['closest_waypoints']
     # Calculate the direction of the center line based on the closest waypoints
-    track_width =params['track_width']
-    RACING_LINE_VS_CENTRAL_LINE = 0.90
-    max_offset = track_width * RACING_LINE_VS_CENTRAL_LINE * 0.5
-    optimal_waypoints = smooth_central_line(waypoints, max_offset)
-    waypoints_length= len(optimal_waypoints)
-    next = closest_distance(params['x'],params['y'],optimal_waypoints,waypoints[closest_waypoints[1]][0],waypoints[closest_waypoints[1]][1])
-    prev= (next -1 +waypoints_length)%waypoints_length
-    next_point_1 = optimal_waypoints[next]
-    next_point_2 = optimal_waypoints[(next+1)%waypoints_length]
-    next_point_3 = optimal_waypoints[(next+2)%waypoints_length]
-    next_point_4 = optimal_waypoints[(next+3)%waypoints_length]
-    next_point_5 = optimal_waypoints[(next+4)%waypoints_length]
-    next_point_6 = optimal_waypoints[(next+5)%waypoints_length]
-    prev_point =   optimal_waypoints[prev]
-    prev_point_2 = optimal_waypoints[(prev-1+waypoints_length)%waypoints_length]
-    prev_point_3 = optimal_waypoints[(prev-2+waypoints_length)%waypoints_length]
-    prev_point_4 = optimal_waypoints[(prev-3+waypoints_length)%waypoints_length]
+    waypoints_length= len(waypoints)
+    prev = int(closest_waypoints[0])
+    next = int(closest_waypoints[1])
+    next_point_1 = waypoints[next]
+    next_point_2 = waypoints[(next+1)%waypoints_length]
+    next_point_3 = waypoints[(next+2)%waypoints_length]
+    next_point_4 = waypoints[(next+3)%waypoints_length]
+    next_point_5 = waypoints[(next+4)%waypoints_length]
+    next_point_6 = waypoints[(next+5)%waypoints_length]
+    prev_point = waypoints[prev]
+    prev_point_2 = waypoints[(prev-1+waypoints_length)%waypoints_length]
+    prev_point_3 = waypoints[(prev-2+waypoints_length)%waypoints_length]
+    prev_point_4 = waypoints[(prev-3+waypoints_length)%waypoints_length]
     # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians
     track_direction = math.atan2(next_point_1[1] - prev_point[1], next_point_1[0] - prev_point[0])
     # Convert to degree
@@ -151,6 +97,8 @@ def reward_function(params):
         
     if abs(params['steering_angle'])<10 and abs(total_angle)>20:
         return 1e-3
+    if abs(params['steering_angle'])>20 and abs(total_angle)<10:
+        return 1e-3
     if total_angle >10 and params['is_left_of_center']:
         reward+=100.0
     if total_angle < -10 and not params['is_left_of_center']:
@@ -166,11 +114,10 @@ def reward_function(params):
     steps=params['steps']
     progress= params['progress']
     if steps>0:
-        step_reward= ((progress*25)/steps)**3
+        step_reward= ((progress*25)/(steps**1.5))**3
 
     reward+=step_reward
+
     if abs(params['steering_angle']-total_angle) >=10:
         reward*=0.25
-    if abs(params['steering_angle']-total_angle) >=10 and params['steering_angle']*total_angle <0:
-        reward = 1e-3
     return float(reward)
