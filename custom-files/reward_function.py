@@ -193,6 +193,10 @@ def reward_function(params):
     reward+=step_reward
 
     if abs(params['steering_angle']-total_angle) >=10:
-        reward*=0.25
+        reward*=0.1
+    if abs(params['steering_angle'])<10 and abs(total_angle)>20:
+        return 1e-3
+    if abs(params['steering_angle'])>20 and abs(total_angle)<10:
+        return 1e-3
     
     return float(reward)
