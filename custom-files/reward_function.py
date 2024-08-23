@@ -110,7 +110,7 @@ def reward_function(params):
 
     
 
-    if(abs(track_direction<=5):
+    if abs(track_direction<=5):
         speed_reward = 0;
         heading_reward = 0;
         distance_from_center_reward = 0;
