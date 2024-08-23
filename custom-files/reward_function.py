@@ -19,12 +19,12 @@ def reward_function(params):
     steps=params['steps']
     progress = params['progress']
     closest_waypoints = params['closest_waypoints']    
-    left_turn=[15,16,17,18,19,20,21,22,23,24,25,26,27,53,54,55,56,57,58,59,60,61,76,77,78,79,80,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,187,188,189,190,191,192,193,194]
-    right_turn=[135,136,137,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159]
+    left_turn=[15,16,17,18,19,20,21,22,23,24,25,26,27,53,54,55,56,57,58,59,60,61,76,77,78,79,80,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,187,188,189,190,191,192,193,194,195]
+    right_turn=[135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159]
     straight_waypoints=[33,34,44,85,94,130,171]
     right_mid_path=[36,37,38,39,40,67,68,69,70,88,89,90,91,92,132,164,165,]
-    not_very_right_waypoints=[133,134,138,139,140,141,142,143,144,160,161,162,163]
-    not_very_left=[11,12,13,14,28,29,30,51,52,62,75,81,82,98,123,124,125,183,184,185,186,195,196,197]
+    not_very_right_waypoints=[133,134,160,161,162,163]
+    not_very_left=[11,12,13,14,28,29,30,51,52,62,75,81,82,98,123,124,125,183,184,185,186,196,197]
     basic_left=[1,2,3,4,5,6,7,31,32,45,46,47,48,65,72,84,95,128,129,172,173,174,175,176,177,178,179,201,202,203,204,205,206,207,208,209,210,211,212,213]
     left_mid=[8,9,10,49,50,63,64,73,74,83,96,97,126,127,180,181,182,198,199,200]
     basic_right=[35,41,42,43,66,71,86,87,93,131,166,167,168,169,170]
@@ -77,7 +77,7 @@ def reward_function(params):
     else:
         steering_reward = 160*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
 
-    if abs(total_angle) >30 and abs(params['steering_angle'])>25 and total_angle*params['steering_angle']>=0:
+    if abs(total_angle) >=25 and abs(params['steering_angle'])>22 and total_angle*params['steering_angle']>=0:
         steering_reward=100
     reward=reward+ steering_reward
     if next in speed_points:
@@ -101,19 +101,19 @@ def reward_function(params):
             reward+=50
     elif next not in curve_points:
         if params['speed'] >=2.0:
-            reward+=30
+            reward+=20
         if params['speed'] >=2.2:
-            reward+=30
+            reward+=20
         if params['speed'] >=2.4:
-            reward+=30
+            reward+=20
         if params['speed'] >=2.6:
-            reward+=30
+            reward+=20
         if params['speed'] >=2.8:
-            reward+=30
+            reward+=20
         if params['speed'] >=3.0:
-            reward+=30
+            reward+=20
         if params['speed'] >=3.2:
-            reward+=50
+            reward+=30
     elif abs(total_angle) <=20:
         opt_speed= 5*math.tanh(10/(1+abs(total_angle)))
         opt_speed=max(2.0,opt_speed)
@@ -194,9 +194,5 @@ def reward_function(params):
 
     if abs(params['steering_angle']-total_angle) >=10:
         reward*=0.1
-    if abs(params['steering_angle'])<10 and abs(total_angle)>20:
-        return 1e-3
-    if abs(params['steering_angle'])>20 and abs(total_angle)<10:
-        return 1e-3
     
     return float(reward)
