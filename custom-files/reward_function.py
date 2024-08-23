@@ -118,6 +118,10 @@ def reward_function(params):
         
         max_speed = 0;
         max_speed_reward_value = 1;
+        if(speed>1.4):
+            max_speed=1.4
+            max_speed_reward_value = 5;
+            speed_reward=speed_reward+5;
         if(speed>2):
             max_speed = 2;
             max_speed_reward_value = 10;
@@ -166,26 +170,30 @@ def reward_function(params):
         
         max_speed = 0;
         max_speed_reward_value = 1;
+        if(speed>1.4):
+            max_speed=1.4
+            max_speed_reward_value = 5;
+            speed_reward=speed_reward+5;
         if(speed>2):
             max_speed = 2;
-            max_speed_reward_value = 10;
-            speed_reward=speed_reward+10;
+            max_speed_reward_value = 100;
+            speed_reward=speed_reward+100;
         if(speed>2.5):
             max_speed = 2.5;
             max_speed_reward_value = 100;
             speed_reward=speed_reward+100;
         if(speed>3):
             max_speed = 3;
-            max_speed_reward_value = 1000;
-            speed_reward=speed_reward+1000;
+            max_speed_reward_value = 100;
+            speed_reward=speed_reward+100;
         if(speed>3.5):
             max_speed = 3.5
-            max_speed_reward_value = 10000;
-            speed_reward=speed_reward+10000;
+            max_speed_reward_value = 100;
+            speed_reward=speed_reward+100;
         if(speed>4):
             max_speed=4
-            max_speed_reward_value = 100000;
-            speed_reward = speed_reward+100000;
+            max_speed_reward_value = 100;
+            speed_reward = speed_reward+100;
         speed_reward = speed_reward + max_speed_reward_value*((speed-max_speed)/0.5)
 
         
