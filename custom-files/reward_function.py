@@ -79,6 +79,8 @@ def reward_function(params):
 
     if abs(total_angle) >=25 and abs(params['steering_angle'])>22 and total_angle*params['steering_angle']>=0:
         steering_reward=100
+
+    
     reward=reward+ steering_reward
     if next in speed_points:
         if params['speed'] >=2.5:
@@ -114,7 +116,7 @@ def reward_function(params):
             reward+=20
         if params['speed'] >=3.2:
             reward+=30
-    elif abs(total_angle) <=20:
+    elif abs(total_angle) <=18:
         opt_speed= 5*math.tanh(10/(1+abs(total_angle)))
         opt_speed=max(2.0,opt_speed)
         reward+=(6-abs(params['speed']-opt_speed))**3
@@ -193,6 +195,6 @@ def reward_function(params):
     reward+=step_reward
 
     if abs(params['steering_angle']-total_angle) >=10:
-        reward*=0.1
+        reward*=0.4
     
     return float(reward)
