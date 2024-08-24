@@ -207,32 +207,32 @@ def reward_function(params):
 
         if(distance_from_center<track_width):
             distance_from_center_reward+=50;
-        if(distance_from_center<0.8*track_width and distance_from_center>0.5*track_width):
+        elif(distance_from_center<0.8*track_width and distance_from_center>0.5*track_width):
             distance_from_center_reward+=1000;
-        if(distance_from_center<=0.5*track_width):
+        else(distance_from_center<=0.5*track_width):
             distance_from_center_reward+=100;
         
         return float(speed_reward + distance_from_center_reward + steering_reward + heading_reward)*0.001;
     else:
         req_speed = get_abs_speed(abs(req_steering_angle));
 
-        speed_reward = 500/(1+ abs(speed-req_speed));
+        speed_reward = 1000/(1+ abs(speed-req_speed));
         distance_from_center_reward = 0;
         steering_reward = 0;
         
         if(track_direction<0 and not is_left_of_center):
-            distance_from_center_reward = 100;
+            distance_from_center_reward = 10000;
             dfc = track_width * min((abs(resp[1])/30),0.9)
-            dfc = 500/(1 + 100*abs(distance_from_center - dfc))
+            dfc = 10000/(1 + 100*(abs(distance_from_center - dfc)/track_width))
             distance_from_center_reward = distance_from_center_reward + dfc
         elif(track_direction>0 and is_left_of_center):
-            distance_from_center_reward = 100;
+            distance_from_center_reward = 10000;
             dfc = track_width * min((abs(resp[1])/40),0.9)
-            dfc = 500/(1 + 100*abs(distance_from_center - dfc))
+            dfc = 10000/(1 + 100*(abs(distance_from_center - dfc)/track_width))
             distance_from_center_reward = distance_from_center_reward + dfc
         else:
-            distance_from_center_reward = 500/(1 + 10*distance_from_center);
+            distance_from_center_reward = 10000/(1 + 10*(distance_from_center/track_width));
         
-        steering_reward = 500/(1 + 10*abs(req_steering_angle-steering_angle))
+        steering_reward = 10000/(1 + 10*abs(req_steering_angle-steering_angle))
         
-        return float(speed_reward + distance_from_center_reward + steering_reward)*0.01;
+        return float(speed_reward + distance_from_center_reward + steering_reward)*0.001;
