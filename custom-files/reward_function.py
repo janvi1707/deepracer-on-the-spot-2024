@@ -149,6 +149,7 @@ def reward_function(params):
 
     steps=params['steps']
     progress= params['progress']
+    step_reward = 0
     if steps>0 and params['steps']%15:
         step_reward= ((progress*25)/steps)**4
 
