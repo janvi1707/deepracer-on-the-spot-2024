@@ -150,7 +150,7 @@ def reward_function(params):
         if(waypoints[start][0]==waypoints[end][0] and waypoints[start][1]==waypoints[end][1]):
             start = (len(waypoints)+start-1)%len(waypoints);
         
-        steering_reward = 10000/(1 + 10*abs(steering_angle));
+        steering_reward = 1000/(1 + 10*abs(steering_angle));
         
         distance_from_center_reward = 0;
 
