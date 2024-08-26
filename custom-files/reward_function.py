@@ -8,26 +8,33 @@ def progress_reward(params):
 def direction_reward_impl(direction_diff):
     direction_reward = 0;
     max_angle = 30;
+    max_value = 0;
     if(direction_diff<=30):
-        direction_reward += 100;
+        direction_reward += 50;
         max_angle = 25;
+        max_value = 50; 
     if(direction_diff<=25):
         direction_reward += 100;
         max_angle = 20;
+        max_value = 100;
     if(direction_diff<=20):
-        direction_reward += 100;
+        direction_reward += 500;
         max_angle = 15;
+        max_value = 500;
     if(direction_diff<=15):
-        direction_reward += 100;
+        direction_reward += 1000;
         max_angle = 10;
+        max_value = 1000;
     if(direction_diff<=10):
-        direction_reward += 100;
+        direction_reward += 5000;
         max_angle = 5;
+        max_value = 5000;
     if(direction_diff<=5):
-        direction_reward += 100;
+        direction_reward += 10000;
         max_angle = 0;
-    direction_reward = direction_reward + (100/(1+(direction_diff-max_angle)));
-    return 10 * direction_reward;
+        max_value = 10000;
+    direction_reward = direction_reward + (max_value/(1+(direction_diff-max_angle)));
+    return direction_reward;
     
 def get_abs_speed(diff):
     steer = abs(diff)
