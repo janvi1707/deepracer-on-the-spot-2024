@@ -168,18 +168,9 @@ def reward_function(params):
         distance_from_center_reward = 0;
         steering_reward = 0;
         
-        req_speed = get_abs_speed(abs(resp[1]));
-        min_speed = get_abs_speed(15);
-        max_speed = get_abs_speed(5);
-        diff = max_speed - min_speed + 1.4;
-
-
-        if(speed <= min_speed):
-            speed_reward = 717/(min_speed-speed+1);
-        elif(speed >= max_speed):
-            speed_reward = 717/(speed-max_speed+1);
-        else:
-            speed_reward = 1000 * math.cos(math.radians((90 * abs(speed-req_speed))/diff))
+        req_speed = get_abs_speed(abs(resp[0]));
+        
+        speed_reward = 1000 * math.cos(math.radians((90 * abs(speed-req_speed))/100))
 
         
         end = int(closest_waypoints[1])
