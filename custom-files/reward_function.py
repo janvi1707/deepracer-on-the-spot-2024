@@ -195,7 +195,11 @@ def reward_function(params):
         steering_reward = 10000/(1 + 10*round(abs(steering_diff)));
         
         distance_from_center_reward = 0;
-
+        if(track_direction<0 and not is_left_of_center):
+            distance_from_center_reward = 500;
+        elif(track_direction>0 and is_left_of_center):
+            distance_from_center_reward = 500;
+            
         if(distance_from_center<track_width and distance_from_center>0.8*track_width):
             distance_from_center_reward+=50;
         elif(distance_from_center<=0.8*track_width and distance_from_center>0.5*track_width):
