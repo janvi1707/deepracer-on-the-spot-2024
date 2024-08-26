@@ -199,7 +199,7 @@ def reward_function(params):
 
         heading_reward = direction_reward_impl(abs(heading_diff));
 
-        steering_diff = abs(resp[1] - steering_angle);
+        steering_diff = abs(resp[0] - steering_angle);
 
         steering_reward = 10000/(1 + 10*round(abs(steering_diff)));
         
