@@ -41,7 +41,7 @@ def fetch_required_steering_angle(waypoints,closest_waypoints,x,y,track_width,he
     w_end = int(closest_waypoints[1]);
     if(waypoints[start][0] == waypoints[w_end][0] and waypoints[start][1]==waypoints[w_end][1]):
         w_end = (w_end+1)%w_len;
-    end = int(w_end+5);
+    end = int(w_end+8);
     resp = int(w_end);
     while(start<=end):
         mid = (start+end)//2
