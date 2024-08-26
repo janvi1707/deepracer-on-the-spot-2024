@@ -170,7 +170,7 @@ def reward_function(params):
         
         req_speed = get_abs_speed(abs(resp[0]));
         
-        speed_reward = 1000 * math.cos(math.radians((90 * abs(speed-req_speed))/100))
+        speed_reward = 1000 * math.cos(math.radians((90 * abs(speed-req_speed))/4))
 
         
         end = int(closest_waypoints[1])
