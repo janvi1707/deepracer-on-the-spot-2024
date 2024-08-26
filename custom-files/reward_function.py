@@ -170,7 +170,7 @@ def reward_function(params):
         
         req_speed = get_abs_speed(abs(resp[0]));
         
-        speed_reward = 10000 * math.cos(math.radians((90 * abs(speed-req_speed))/4))
+        speed_reward = 10000 * math.cos(math.radians((90 * abs(speed-req_speed))/2.6))
 
         
         end = int(closest_waypoints[1])
@@ -196,12 +196,12 @@ def reward_function(params):
         
         distance_from_center_reward = 0;
         if(track_direction<0 and not is_left_of_center):
-            distance_from_center_reward = 500;
+            distance_from_center_reward = 3000;
         elif(track_direction>0 and is_left_of_center):
-            distance_from_center_reward = 500;
+            distance_from_center_reward = 3000;
             
         if(distance_from_center<track_width and distance_from_center>0.8*track_width):
-            distance_from_center_reward+=500;
+            distance_from_center_reward+=1000;
         elif(distance_from_center<=0.8*track_width and distance_from_center>0.5*track_width):
             distance_from_center_reward+=10000;
         else:
