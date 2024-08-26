@@ -164,10 +164,10 @@ def reward_function(params):
         reward+=50
         if params['distance_from_center']>=0.2*params['track_width'] and params['distance_from_center']<0.3*params['track_width']:
             reward+=50+params['speed']**3
-    step_reward=1e-2
+    step_reward=1
     if steps>0:
-        step_reward= ((progress*25)/steps)**3
+        step_reward= ((progress*5)/steps)**3
 
-    reward+=step_reward
+    reward*=step_reward
     
     return float(reward)
