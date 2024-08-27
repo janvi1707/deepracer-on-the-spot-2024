@@ -157,7 +157,16 @@ def reward_function(params):
         if(waypoints[start][0]==waypoints[end][0] and waypoints[start][1]==waypoints[end][1]):
             start = (len(waypoints)+start-1)%len(waypoints);
         
-        steering_reward = 10000/(1 + 10*abs(steering_angle-resp[0]));
+        track_direction = math.atan2(waypoints[end][1]-waypoints[start][1],waypoints[end][0]-waypoints[start][0])
+        track_direction = math.degrees(track_direction)
+
+        heading_diff = track_direction-heading
+        if(heading_diff>180):
+            heading_diff = heading_diff-360;
+        elif(heading_diff<-180):
+            heading_diff = heading_diff+360;
+
+        heading_reward = direction_reward_impl(abs(heading_diff));
         
         distance_from_center_reward = 0;
 
@@ -168,7 +177,7 @@ def reward_function(params):
         if(distance_from_center<0.5*track_width):
             distance_from_center_reward+=10000;
         
-        return float(speed_reward + steering_reward + distance_from_center_reward)*0.001;
+        return float(speed_reward + heading_reward + distance_from_center_reward)*0.001;
     elif abs(track_direction)<=15:
         speed_reward = 0;
         heading_reward = 0;
