@@ -157,16 +157,16 @@ def reward_function(params):
         if(waypoints[start][0]==waypoints[end][0] and waypoints[start][1]==waypoints[end][1]):
             start = (len(waypoints)+start-1)%len(waypoints);
         
-        steering_reward = 1000/(1 + 10*abs(steering_angle));
+        steering_reward = 10000/(1 + 10*abs(steering_angle));
         
         distance_from_center_reward = 0;
 
         if(distance_from_center<track_width):
-            distance_from_center_reward+=10;
-        if(distance_from_center<0.8*track_width):
             distance_from_center_reward+=100;
-        if(distance_from_center<0.5*track_width):
+        if(distance_from_center<0.8*track_width):
             distance_from_center_reward+=1000;
+        if(distance_from_center<0.5*track_width):
+            distance_from_center_reward+=10000;
         
         return float(speed_reward + steering_reward + distance_from_center_reward)*0.001;
     elif abs(track_direction)<=15:
