@@ -50,7 +50,7 @@
     },  
     {
       "steering_angle": 0,
-      "speed": 4
+      "speed": 5
     }
   ],
   "sensor": [
