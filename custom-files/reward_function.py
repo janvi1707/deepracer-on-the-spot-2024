@@ -106,21 +106,21 @@ def reward_function(params):
     speed_reward=1e-4
     opt_reward=1e-4
 
-    steering_reward = 13*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
+    steering_reward = 15*math.tanh(10/(1+abs(params['steering_angle']-total_angle)))
 
     if next in straight_lines:
         if speed >=2.8:
-            speed_reward+=3
+            speed_reward+=1.5
         if speed >=3:
-            speed_reward+=3
+            speed_reward+=1.5
         if speed>=3.2:
-            speed_reward+=3
+            speed_reward+=1.5
         if speed >=3.4:
-            speed_reward+=2
+            speed_reward+=1.5
         if speed >=3.7:
-            speed_reward+=2
+            speed_reward+=1.5
         if speed >=4:
-            speed_reward+=2
+            speed_reward+=1.5
         if speed >=4.2:
             speed_reward+=1
         if speed >=4.4:
