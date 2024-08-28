@@ -328,7 +328,7 @@ def reward_function(params):
     prev_closest_point_index,next_closest_point_index = closest_route_point(vehicle_x,vehicle_y,optimal_waypoints)
     next_route_point_x = optimal_waypoints[(next_closest_point_index+4)%waypoints_length][0]
     next_route_point_y = optimal_waypoints[(next_closest_point_index+4)%waypoints_length][1]
-
+    print("Next closest point index:",next_closest_point_index)
     # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians between target and current vehicle position
     route_direction = math.atan2(next_route_point_y - vehicle_y, next_route_point_x - vehicle_x) 
     # Convert to degree
@@ -340,12 +340,17 @@ def reward_function(params):
     heading_reward = math.cos( abs(direction_diff ) * ( math.pi / 180 ) ) ** 10
     if abs(direction_diff) <= 20:
         heading_reward = math.cos( abs(direction_diff ) * ( math.pi / 180 ) ) ** 4
+    print("Route Direction:",route_direction)
+    print("Direction Diff:",direction_diff)
+    print("Heading Reward:",heading_reward)
+
 ###########################################################    
     #Distance Reward
 ###########################################################
     #distance reward is value of the standard normal scaled back to 1. #Hence the 1/2*pi*sigma term is cancelled out
     distance_reward = 0
-    normalized_car_distance_from_route = normalized_distance(optimal_waypoints[prev_closest_point_index],optimal_waypoints[next_closest_point_index],vehicle_x,vehicle_y)/track_width
+    normalized_car_distance_from_route = (normalized_distance(optimal_waypoints[prev_closest_point_index],optimal_waypoints[next_closest_point_index],vehicle_x,vehicle_y))/track_width
+    print("Normalized distance from track:",normalized_car_distance_from_route)
     if normalized_car_distance_from_route == 0: #i.e. on the route line
         distance_from_route = 0
         distance_reward = 1
@@ -356,6 +361,7 @@ def reward_function(params):
         else:
             normalized_route_distance_from_inner_border+= 0.5*params['track_width']
         normalized_route_distance_from_inner_border/=track_width
+        print("Normalized distance from inner border:",normalized_route_distance_from_inner_border)
         sigma=abs(normalized_route_distance_from_inner_border / 4) 
         distance_reward = math.exp(-0.5*abs(normalized_car_distance_from_route)**2/sigma**2)
     elif normalized_car_distance_from_route < 0: #i.e. on left side of the route line
@@ -365,8 +371,10 @@ def reward_function(params):
         else:
             normalized_route_distance_from_outer_border+= 0.5*params['track_width']
         normalized_route_distance_from_outer_border/=track_width
+        print("Normalized distance from outer border:",normalized_route_distance_from_outer_border)
         sigma=abs(normalized_route_distance_from_outer_border / 4) 
         distance_reward = math.exp(-0.5*abs(normalized_car_distance_from_route)**2/sigma**2)
+    print("Distance Reward:",distance_reward)
 ###########################################################
     #Speed Reward
 ###########################################################
@@ -385,6 +393,8 @@ def reward_function(params):
     #PARAMS.optimal speed is unbounded and hence must be bounded from above to reflect action space realities
     optimal_speed = min(MAX_SPEED,optimal_speed)
     speed_reward = math.exp(-0.5*abs(speed-optimal_speed)**2 / sigma_speed**2)
+    print("Optimal Speed:",optimal_speed)
+    print("Speed Reward:",speed_reward)
 
 # Reinitialize previous parameters if it is a new episode
     #Check if the speed has dropped
@@ -392,13 +402,13 @@ def reward_function(params):
     if PARAMS.prev_speed is not None:
         if PARAMS.prev_speed > speed:
             has_speed_dropped = True
-    speed_maintain_bonus= 1
+    speed_maintain_bonus= 2
     #Penalize slowing down without good reason on straight portions
     if has_speed_dropped and not params['closest_waypoints'][1] in curve_points: 
         speed_maintain_bonus = min( speed / PARAMS.prev_speed, 1 )
     #Penalize making the heading direction worse
     heading_decrease_bonus = 0
-    is_heading_in_right_direction = True if abs(direction_diff) <=30 else False
+    is_heading_in_right_direction = True if abs(direction_diff) <=20 else False
     if PARAMS.prev_direction_diff is not None:
         if is_heading_in_right_direction:
             if abs( PARAMS.prev_direction_diff / direction_diff ) > 1:
@@ -412,11 +422,11 @@ def reward_function(params):
     #Not changing the steering angle is a good thing if heading in the right direction
     if is_heading_in_right_direction and not has_steering_angle_changed:
         if abs(direction_diff) < 10:
-            steering_angle_maintain_bonus *= 2
+            steering_angle_maintain_bonus *= 1.4
         if abs(direction_diff) < 5:
-            steering_angle_maintain_bonus *= 2
+            steering_angle_maintain_bonus *= 1.4
         if PARAMS.prev_direction_diff is not None and abs(PARAMS.prev_direction_diff) > abs(direction_diff):
-            steering_angle_maintain_bonus *= 2
+            steering_angle_maintain_bonus *= 1.4
     #Reward reducing distance to the race line
     distance_reduction_bonus = 1
     if PARAMS.prev_normalized_distance_from_route is not None and PARAMS.prev_normalized_distance_from_route > normalized_car_distance_from_route:
@@ -435,7 +445,11 @@ def reward_function(params):
     #speed component of reward
     SC = ( 5 * speed_reward * speed_maintain_bonus )
     #Immediate component of reward
-    IC = ( HC + DC + SC ) ** 2 + ( HC * DC * SC ) 
+    IC = ( HC + DC + SC ) ** 2 + ( HC * DC * SC )
+
+    print("Speed Maintain Bonus :",speed_maintain_bonus)
+    print("Distance Reduction Bonus :",distance_reduction_bonus)
+    print("Steering angle Maintain Bonus :",steering_angle_maintain_bonus) 
 #If an unpardonable action is taken, then the immediate reward is 0
 #########################################################
 # Unpardonable Actions
@@ -450,6 +464,7 @@ def reward_function(params):
         IC = 0
     if params['speed'] + 1.5 < optimal_speed and params['closest_waypoints'][1] in straight_points:
         IC = 0
+    print("IC:",IC)
     # Reward for making steady progress
     progress_reward = 10 * progress / steps
     if steps <= 5:
@@ -464,6 +479,8 @@ def reward_function(params):
             intermediate_progress_bonus = progress_reward ** 14
     else:
         intermediate_progress_bonus = progress_reward ** (5+0.75*pi)
+    print("Progress Reward :",progress_reward)
+    print("Intermediate Progres Bonus:",intermediate_progress_bonus)
     #Long term component of reward
     #TO-DO
     curve_bonus=0
