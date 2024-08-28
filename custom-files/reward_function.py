@@ -7,6 +7,19 @@ class PARAMS:
     prev_direction_diff = None
     prev_normalized_distance_from_route = None
 
+def angle_between_lines(x1, y1, x2, y2, x3, y3, x4, y4):
+    dx1 = x2 - x1
+    dy1 = y2 - y1
+    dx2 = x4 - x3
+    dy2 = y4 - y3
+    angle = math.atan2(dy2, dx2) - math.atan2(dy1, dx1)
+    deg= math.degrees(angle)
+    if deg>180:
+        deg=deg-360
+    if deg <-180:
+        deg= deg+360
+    return deg
+
 def smooth_central_line(center_line, max_offset, pp=0.10, p=0.05, c=0.70, n=0.05, nn=0.10, iterations=72, skip_step=1):
     if max_offset < 0.0001:
         return center_line
@@ -106,30 +119,79 @@ def reward_function(params):
         PARAMS.prev_direction_diff = None
         PARAMS.prev_normalized_distance_from_route = None
     optimal_speed_array = generate_optimal_speed_array(optimal_waypoints)
-###########################################################
-    #Heading Reward
-###########################################################
+##################
+#steering
+#############
+    waypoints = params['waypoints']
+    closest_waypoints = params['closest_waypoints']
+    # Calculate the direction of the center line based on the closest waypoints
+    waypoints_length= len(waypoints)
+    prev = int(closest_waypoints[0])
+    next = int(closest_waypoints[1])
+    next_point_1 = waypoints[next]
+    next_point_2 = waypoints[(next+1)%waypoints_length]
+    next_point_3 = waypoints[(next+2)%waypoints_length]
+    next_point_4 = waypoints[(next+3)%waypoints_length]
+    next_point_5 = waypoints[(next+4)%waypoints_length]
+    next_point_6 = waypoints[(next+5)%waypoints_length]
+    prev_point = waypoints[prev]
+    prev_point_2 = waypoints[(prev-1+waypoints_length)%waypoints_length]
+    prev_point_3 = waypoints[(prev-2+waypoints_length)%waypoints_length]
+    prev_point_4 = waypoints[(prev-3+waypoints_length)%waypoints_length]
+    # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians
+    track_direction = math.atan2(next_point_1[1] - prev_point[1], next_point_1[0] - prev_point[0])
+    # Convert to degree
+    track_direction = math.degrees(track_direction)
+
+    # Calculate the difference between the track direction and the heading direction of the car
+    direction_diff = abs(track_direction - params['heading'])
+    if direction_diff > 180:
+        direction_diff = 360 - direction_diff
+
+    # Penalize the reward if the difference is too large
+    angle_f= angle_between_lines(next_point_1[0],next_point_1[1],next_point_2[0],next_point_2[1],next_point_3[0],next_point_3[1],next_point_4[0],next_point_4[1])
+    reward = 1e-9
+    total_angle = angle_f
+    if total_angle >90:
+        total_angle-=180
+    elif total_angle <-90:
+        total_angle+=180
+    if total_angle >30:
+        total_angle=30
+    elif total_angle <-30:
+        total_angle=-30
+    if abs(total_angle)<=7:
+        total_angle=0
+    if next ==1 or prev==1 or (next+1)%waypoints_length ==1 or (next+2)%waypoints_length ==1 or (next+3)%waypoints_length ==1 or (next+4)%waypoints_length ==1 or (next+5)%waypoints_length ==1 or (next+6)%waypoints_length ==1 or (next+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
+        total_angle =0
+    steering_reward = 1/(1+abs(params['steering_angle']-total_angle))
+    if abs(total_angle) >=30 and abs(params['steering_angle'])>25 and total_angle*params['steering_angle']>=0:
+        steering_reward=1
+
+# ###########################################################
+#     #Heading Reward
+# ###########################################################
     heading = params['heading']
     vehicle_x = params['x']
     vehicle_y = params['y']
     prev_closest_point_index,next_closest_point_index = closest_route_point(vehicle_x,vehicle_y,optimal_waypoints)
     next_route_point_x = optimal_waypoints[(next_closest_point_index+4)%waypoints_length][0]
     next_route_point_y = optimal_waypoints[(next_closest_point_index+4)%waypoints_length][1]
-    print("Next closest point index:",next_closest_point_index)
-    # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians between target and current vehicle position
-    route_direction = math.atan2(next_route_point_y - vehicle_y, next_route_point_x - vehicle_x) 
-    # Convert to degree
-    route_direction = math.degrees(route_direction)
-    # Calculate the difference between the track direction and the heading direction of the car
-    direction_diff = route_direction - heading
-    #Check that the direction_diff is in valid range
-    #Then compute the heading reward
-    heading_reward = math.cos( abs(direction_diff ) * ( math.pi / 180 ) ) ** 10
-    if abs(direction_diff) <= 20:
-        heading_reward = math.cos( abs(direction_diff ) * ( math.pi / 180 ) ) ** 4
-    print("Route Direction:",route_direction)
-    print("Direction Diff:",direction_diff)
-    print("Heading Reward:",heading_reward)
+#     print("Next closest point index:",next_closest_point_index)
+#     # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians between target and current vehicle position
+#     route_direction = math.atan2(next_route_point_y - vehicle_y, next_route_point_x - vehicle_x) 
+#     # Convert to degree
+#     route_direction = math.degrees(route_direction)
+#     # Calculate the difference between the track direction and the heading direction of the car
+#     direction_diff = route_direction - heading
+#     #Check that the direction_diff is in valid range
+#     #Then compute the heading reward
+#     heading_reward = math.cos( abs(direction_diff ) * ( math.pi / 180 ) ) ** 10
+#     if abs(direction_diff) <= 20:
+#         heading_reward = math.cos( abs(direction_diff ) * ( math.pi / 180 ) ) ** 4
+#     print("Route Direction:",route_direction)
+#     print("Direction Diff:",direction_diff)
+#     print("Heading Reward:",heading_reward)
 
 ###########################################################    
     #Distance Reward
@@ -195,16 +257,16 @@ def reward_function(params):
         speed_maintain_bonus = min( speed / PARAMS.prev_speed, 1 )
     #Penalize making the heading direction worse
     heading_decrease_bonus = 0
-    is_heading_in_right_direction = True if abs(direction_diff) <=20 else False
-    if PARAMS.prev_direction_diff is not None:
-        if is_heading_in_right_direction:
-            if abs( PARAMS.prev_direction_diff / direction_diff ) > 1:
-                heading_decrease_bonus = min(10, abs( PARAMS.prev_direction_diff / direction_diff ))
+    # is_heading_in_right_direction = True if abs(direction_diff) <=20 else False
+    # if PARAMS.prev_direction_diff is not None:
+    #     if is_heading_in_right_direction:
+    #         if abs( PARAMS.prev_direction_diff / direction_diff ) > 1:
+    #             heading_decrease_bonus = min(10, abs( PARAMS.prev_direction_diff / direction_diff ))
     #has the steering angle changed
-    has_steering_angle_changed = False
-    if PARAMS.prev_steering_angle is not None:
-        if not(math.isclose(PARAMS.prev_steering_angle,steering_angle)):
-            has_steering_angle_changed = True
+    # has_steering_angle_changed = False
+    # if PARAMS.prev_steering_angle is not None:
+    #     if not(math.isclose(PARAMS.prev_steering_angle,steering_angle)):
+    #         has_steering_angle_changed = True
     steering_angle_maintain_bonus = 1 
     # #Not changing the steering angle is a good thing if heading in the right direction
     # if is_heading_in_right_direction and not has_steering_angle_changed:
@@ -227,7 +289,7 @@ def reward_function(params):
     PARAMS.prev_normalized_distance_from_route = normalized_car_distance_from_route
     #heading component of reward
     # HC = ( 10 * heading_reward * steering_angle_maintain_bonus )
-    HC = ( 10 * heading_reward )
+    HC = ( 10 * steering_reward )
     #distance component of reward
     DC = ( 10 * distance_reward * distance_reduction_bonus )
     #speed component of reward
@@ -273,6 +335,6 @@ def reward_function(params):
     #TO-DO
     curve_bonus=0
     straight_section_bonus=0
-    LC = ( curve_bonus + intermediate_progress_bonus + straight_section_bonus )
-    return max(IC + LC,1e-3)
+    # LC = ( curve_bonus + intermediate_progress_bonus + straight_section_bonus )
+    return max(IC ,1e-3)
     
