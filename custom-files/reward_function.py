@@ -169,9 +169,9 @@ def reward_function(params):
         total_angle=0
     if next ==1 or prev==1 or (next+1)%waypoints_length ==1 or (next+2)%waypoints_length ==1 or (next+3)%waypoints_length ==1 or (next+4)%waypoints_length ==1 or (next+5)%waypoints_length ==1 or (next+6)%waypoints_length ==1 or (next+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
         total_angle =0
-    steering_reward = 1/(1+abs(params['steering_angle']-total_angle))
+    steering_reward = 100/(1+abs(params['steering_angle']-total_angle))
     if abs(total_angle) >=30 and abs(params['steering_angle'])>25 and total_angle*params['steering_angle']>=0:
-        steering_reward=1
+        steering_reward=100
 
     if abs(params['steering_angle']-total_angle) >=10:
         steering_reward*=0.25
@@ -179,7 +179,7 @@ def reward_function(params):
         return 1e-3
 
     if abs(params['steering_angle'])>=25 and abs(total_angle)>=25 and total_angle*params['steering_angle']>=0:
-        steering_reward=1
+        steering_reward=100
     if abs(params['steering_angle'])>7 and abs(total_angle)<9 and total_angle*params['steering_angle']>=0:
         return 1e-3
 
@@ -191,52 +191,52 @@ def reward_function(params):
     opt_reward=0
     prev_closest_point_index,next_closest_point_index = closest_route_point(vehicle_x,vehicle_y,optimal_waypoints)
     if next in left_turn and params['is_left_of_center']:
-        opt_reward+=0.3
+        opt_reward+=30
         if params['distance_from_center']>=0.25*params['track_width']:
-            opt_reward+=0.7
+            opt_reward+=70
         elif params['distance_from_center']>=0.18*params['track_width']:
-            opt_reward+=0.4
+            opt_reward+=40
         elif  params['distance_from_center']>=0.1*params['track_width']:
-            opt_reward+=0.2
+            opt_reward+=20
     if next in left_turn and not params['is_left_of_center']:
-        opt_reward-=0.3
+        opt_reward-=30
     if next in right_turn and not params['is_left_of_center']:
-        opt_reward+=0.3
+        opt_reward+=30
         if params['distance_from_center']>=0.25*params['track_width']:
-            opt_reward+=0.7
+            opt_reward+=70
         elif params['distance_from_center']>=0.18*params['track_width']:
-            opt_reward+=0.4
+            opt_reward+=40
         elif  params['distance_from_center']>=0.1*params['track_width']:
-            opt_reward+=0.2
+            opt_reward+=20
     if next in right_turn and params['is_left_of_center']:
-        opt_reward-=0.3
+        opt_reward-=30
     if next in not_very_right_waypoints and not params['is_left_of_center']:
-        opt_reward+=0.3
+        opt_reward+=30
         if params['distance_from_center']>=0.2*params['track_width']:
-            opt_reward+=0.7
+            opt_reward+=70
     if next in not_very_left and params['is_left_of_center']:
-        opt_reward+=0.3
+        opt_reward+=30
         if  params['distance_from_center']>=0.2*params['track_width']:
-            opt_reward+=0.7
+            opt_reward+=70
     if next in basic_left:
         if params['is_left_of_center'] or params['distance_from_center']==0:
-            opt_reward+=0.3
+            opt_reward+=30
             if params['distance_from_center']<=0.2*params['track_width']:
-                opt_reward+=0.7
+                opt_reward+=70
     if next in basic_right:
         if not params['is_left_of_center'] or params['distance_from_center']==0:
-            opt_reward+=0.3
+            opt_reward+=30
             if params['distance_from_center']<=0.2*params['track_width']:
-                opt_reward+=0.7
+                opt_reward+=70
     if next in right_mid_path and not params['is_left_of_center']:
-        opt_reward+=0.3
+        opt_reward+=30
         if params['distance_from_center']>=0.18*params['track_width'] and params['distance_from_center']<0.25*params['track_width']:
-            opt_reward+=0.7
+            opt_reward+=70
 
     if next in left_mid and params['is_left_of_center']:
-        opt_reward+=0.3
+        opt_reward+=30
         if params['distance_from_center']>=0.18*params['track_width'] and params['distance_from_center']<0.25*params['track_width']:
-            opt_reward+=0.7
+            opt_reward+=70
 ###########################################################
     #Speed Reward
 ###########################################################
@@ -257,7 +257,7 @@ def reward_function(params):
     speed_reward = math.exp(-0.5*abs(speed-optimal_speed)**2 / sigma_speed**2)
     print("Optimal Speed:",optimal_speed)
     print("Speed Reward:",speed_reward)
-
+    speed_reward*=100
 # Reinitialize previous parameters if it is a new episode
     #Check if the speed has dropped
     has_speed_dropped = False
@@ -268,7 +268,16 @@ def reward_function(params):
     #Penalize slowing down without good reason on straight portions
     if has_speed_dropped and not params['closest_waypoints'][1] in curve_points: 
         speed_maintain_bonus = min( speed / PARAMS.prev_speed, 1 )
-    
+    ##########
+    ##progress#####
+    ######
+    step_reward=0
+    if steps<5:
+        step_reward=1
+
+    if steps>5 and steps%30==0:
+        step_reward+= ((progress*31)/steps)**4
+
    # Before returning reward, update the variables
     PARAMS.prev_speed = speed
     PARAMS.prev_steering_angle = steering_angle
@@ -282,7 +291,7 @@ def reward_function(params):
 
     OC = 5 * opt_reward
     #Immediate component of reward
-    IC = ( HC + SC +OC ) ** 2 + ( HC * SC * OC )
+    IC = ( HC + SC + OC + step_reward )
 
     print("Speed Maintain Bonus :",speed_maintain_bonus)
 #If an unpardonable action is taken, then the immediate reward is 0
