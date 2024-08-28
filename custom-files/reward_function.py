@@ -206,14 +206,14 @@ def reward_function(params):
         if not(math.isclose(PARAMS.prev_steering_angle,steering_angle)):
             has_steering_angle_changed = True
     steering_angle_maintain_bonus = 1 
-    #Not changing the steering angle is a good thing if heading in the right direction
-    if is_heading_in_right_direction and not has_steering_angle_changed:
-        if abs(direction_diff) < 10:
-            steering_angle_maintain_bonus *= 2
-        if abs(direction_diff) < 5:
-            steering_angle_maintain_bonus *= 2
-        if PARAMS.prev_direction_diff is not None and abs(PARAMS.prev_direction_diff) > abs(direction_diff):
-            steering_angle_maintain_bonus *= 2
+    # #Not changing the steering angle is a good thing if heading in the right direction
+    # if is_heading_in_right_direction and not has_steering_angle_changed:
+    #     if abs(direction_diff) < 10:
+    #         steering_angle_maintain_bonus *= 2
+    #     if abs(direction_diff) < 5:
+    #         steering_angle_maintain_bonus *= 2
+    #     if PARAMS.prev_direction_diff is not None and abs(PARAMS.prev_direction_diff) > abs(direction_diff):
+    #         steering_angle_maintain_bonus *= 2
     #Reward reducing distance to the race line
     distance_reduction_bonus = 1
     if PARAMS.prev_normalized_distance_from_route is not None and PARAMS.prev_normalized_distance_from_route > normalized_car_distance_from_route:
@@ -226,7 +226,8 @@ def reward_function(params):
     PARAMS.prev_steps = steps
     PARAMS.prev_normalized_distance_from_route = normalized_car_distance_from_route
     #heading component of reward
-    HC = ( 10 * heading_reward * steering_angle_maintain_bonus )
+    # HC = ( 10 * heading_reward * steering_angle_maintain_bonus )
+    HC = ( 10 * heading_reward )
     #distance component of reward
     DC = ( 10 * distance_reward * distance_reduction_bonus )
     #speed component of reward
