@@ -234,13 +234,13 @@ def reward_function(params):
                         [-0.81003734 ,-5.40219951]]
     waypoints_length= len(optimal_waypoints)
     prev = int(closest_waypoints[0])
-    next = int(closest_waypoints[1])
-    next_point_1 = optimal_waypoints[next]
-    next_point_2 = optimal_waypoints[(next+1)%waypoints_length]
-    next_point_3 = optimal_waypoints[(next+2)%waypoints_length]
-    next_point_4 = optimal_waypoints[(next+3)%waypoints_length]
-    next_point_5 = optimal_waypoints[(next+4)%waypoints_length]
-    next_point_6 = optimal_waypoints[(next+5)%waypoints_length]
+    next_index = int(closest_waypoints[1])
+    next_point_1 = optimal_waypoints[next_index]
+    next_point_2 = optimal_waypoints[(next_index+1)%waypoints_length]
+    next_point_3 = optimal_waypoints[(next_index+2)%waypoints_length]
+    next_point_4 = optimal_waypoints[(next_index+3)%waypoints_length]
+    next_point_5 = optimal_waypoints[(next_index+4)%waypoints_length]
+    next_point_6 = optimal_waypoints[(next_index+5)%waypoints_length]
     prev_point = optimal_waypoints[prev]
     prev_point_2 = optimal_waypoints[(prev-1+waypoints_length)%waypoints_length]
     prev_point_3 = optimal_waypoints[(prev-2+waypoints_length)%waypoints_length]
@@ -268,7 +268,7 @@ def reward_function(params):
         total_angle+=180
     if abs(total_angle)<5:
         total_angle=0
-    if next ==1 or prev==1 or (next+1)%waypoints_length ==1 or (next+2)%waypoints_length ==1 or (next+3)%waypoints_length ==1 or (next+4)%waypoints_length ==1 or (next+5)%waypoints_length ==1 or (next+6)%waypoints_length ==1 or (next+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
+    if next_index ==1 or prev==1 or (next_index+1)%waypoints_length ==1 or (next_index+2)%waypoints_length ==1 or (next_index+3)%waypoints_length ==1 or (next_index+4)%waypoints_length ==1 or (next_index+5)%waypoints_length ==1 or (next_index+6)%waypoints_length ==1 or (next_index+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
         total_angle =0
     steering_reward = 100/(1+abs(params['steering_angle']-total_angle))
     if params['steps'] > 0:
