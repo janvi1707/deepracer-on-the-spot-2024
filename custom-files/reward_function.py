@@ -35,11 +35,11 @@ def reward_function(params):
     right_turn=[135,136,137,138,139,140,141,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162]
     next_point = params['closest_waypoints'][1]
     if next_point in straight_points:
-        reward = reward + speed**3
+        reward = reward + speed**5
     elif next_point in curve_points:
         reward+=speed
     else:
-        reward+=speed**2
+        reward+=speed**3
     if next_point in left_turn and params['is_left_of_center']:
         reward+=16
         if params['distance_from_center']>=0.25*params['track_width']:
