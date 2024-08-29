@@ -235,13 +235,13 @@ def reward_function(params):
     waypoints_length= len(optimal_waypoints)
     prev = int(closest_waypoints[0])
     next_index = int(closest_waypoints[1])
-    next_point_1 = optimal_waypoints[next_index]
+    next_point_1 = optimal_waypoints[next_index%waypoints_length]
     next_point_2 = optimal_waypoints[(next_index+1)%waypoints_length]
     next_point_3 = optimal_waypoints[(next_index+2)%waypoints_length]
     next_point_4 = optimal_waypoints[(next_index+3)%waypoints_length]
     next_point_5 = optimal_waypoints[(next_index+4)%waypoints_length]
     next_point_6 = optimal_waypoints[(next_index+5)%waypoints_length]
-    prev_point = optimal_waypoints[prev]
+    prev_point = optimal_waypoints[prev%waypoints_length]
     prev_point_2 = optimal_waypoints[(prev-1+waypoints_length)%waypoints_length]
     prev_point_3 = optimal_waypoints[(prev-2+waypoints_length)%waypoints_length]
     prev_point_4 = optimal_waypoints[(prev-3+waypoints_length)%waypoints_length]
