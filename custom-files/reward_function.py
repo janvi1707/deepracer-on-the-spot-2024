@@ -169,7 +169,7 @@ def reward_function(params):
         heading_reward = direction_reward_impl(abs(heading_diff));
 
         if(abs(resp[1])<2):
-            heading_reward += 10000/(1+10*abs(steering_angle))
+            heading_reward = 10000/(1+10*abs(steering_angle))
         
         distance_from_center_reward = 0;
 
@@ -187,7 +187,7 @@ def reward_function(params):
         distance_from_center_reward = 0;
         steering_reward = 0;
         
-        req_speed = get_abs_speed(abs(resp[0]));
+        req_speed = get_abs_speed(abs(resp[1]));
         
         speed_reward = 10000 * math.cos(math.radians((90 * abs(speed-req_speed))/2.6))
 
@@ -211,7 +211,7 @@ def reward_function(params):
 
         
 
-        steering_diff = abs(resp[0] - steering_angle);
+        steering_diff = abs(resp[1] - steering_angle);
 
         steering_reward = 10000/(1 + 10*round(abs(steering_diff)));
 
