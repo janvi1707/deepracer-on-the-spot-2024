@@ -167,6 +167,9 @@ def reward_function(params):
             heading_diff = heading_diff+360;
 
         heading_reward = direction_reward_impl(abs(heading_diff));
+
+        if(abs(resp[1])<2):
+            heading_reward += 10000/(1+10*abs(steering_angle))
         
         distance_from_center_reward = 0;
 
@@ -206,9 +209,13 @@ def reward_function(params):
 
         heading_reward = direction_reward_impl(abs(heading_diff));
 
+        
+
         steering_diff = abs(resp[0] - steering_angle);
 
         steering_reward = 10000/(1 + 10*round(abs(steering_diff)));
+
+
         
         distance_from_center_reward = 0;
         if(track_direction<0 and not is_left_of_center):
