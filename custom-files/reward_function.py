@@ -237,6 +237,8 @@ def reward_function(params):
         speed_reward = 1000/(1+ abs(speed-req_speed));
         distance_from_center_reward = 0;
         steering_reward = 0;
+        if(steering_angle*track_direction<=0):
+            return 1e-8
         
         if(track_direction<0 and not is_left_of_center):
             distance_from_center_reward = 10000;
