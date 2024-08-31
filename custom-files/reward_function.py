@@ -340,23 +340,23 @@ def reward_function(params):
         total_angle=0
     if next_index ==1 or prev==1 or (next_index+1)%waypoints_length ==1 or (next_index+2)%waypoints_length ==1 or (next_index+3)%waypoints_length ==1 or (next_index+4)%waypoints_length ==1 or (next_index+5)%waypoints_length ==1 or (next_index+6)%waypoints_length ==1 or (next_index+7)%waypoints_length ==1 or (prev -1 +waypoints_length)%waypoints_length ==1:
         total_angle =0
-    steering_reward = 100/(1+abs(params['steering_angle']-total_angle))
+    steering_reward = 200/(1+abs(params['steering_angle']-total_angle))
     if params['steps'] > 0:
         progress_reward =(params['progress'])/(params['steps'])+ params['progress']//2
-        reward += progress_reward
+        reward += (progress_reward)**2
     else:
         return 1e-9
-    reward=reward+ steering_reward
+    reward=reward
     if direction_diff <=10.0:
         reward+=10.0
-    LOOK_AHEAD_POINTS = 4
+    LOOK_AHEAD_POINTS = 3
     MIN_SPEED = 1.3
     MAX_SPEED = 4
-
+    speed_reward = 1
     # Calculate optimal speed
     optimal_speed_waypoints = optimal_velocity(track=optimal_waypoints, 
         min_speed=MIN_SPEED, max_speed=MAX_SPEED, look_ahead_points=LOOK_AHEAD_POINTS)
-    reward = reward + 200/(1+abs(optimal_speed_waypoints[next_index%waypoints_length]-params['speed']))
+    speed_reward = speed_reward + 200/(1+3*abs(optimal_speed_waypoints[next_index%waypoints_length]-params['speed']))
         
     if abs(params['steering_angle'])<10 and abs(total_angle)>20:
         return 1e-3
@@ -370,9 +370,10 @@ def reward_function(params):
     if steps>0:
         step_reward= ((progress*25)/steps)**3
 
-    reward+=step_reward
-
+    reward+=(step_reward)**2
+    reward += (speed_reward+steering_reward)**2
     if abs(params['steering_angle']-total_angle) >=20:
         reward*=0.25
+
 
     return float(reward)
