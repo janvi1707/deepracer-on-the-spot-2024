@@ -87,7 +87,7 @@ def reward_function(params):
         return 1e-9
     waypoints = params['waypoints']
     closest_waypoints = params['closest_waypoints']
-    straight=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131,144, 145, 146, 147, 148, 149, 150, 151,162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182,200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214]
+    
     # Calculate the direction of the center line based on the closest waypoints
     optimal_waypoints = [[-0.63851828 ,-5.40203879],
                         [-0.50851834 ,-5.40191698],
@@ -316,6 +316,7 @@ def reward_function(params):
     prev_point_2 = optimal_waypoints[(prev-1+waypoints_length)%waypoints_length]
     prev_point_3 = optimal_waypoints[(prev-2+waypoints_length)%waypoints_length]
     prev_point_4 = optimal_waypoints[(prev-3+waypoints_length)%waypoints_length]
+    straight=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131,144, 145, 146, 147, 148, 149, 150, 151,162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182,200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214]
     # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians
     track_direction = math.atan2(next_point_1[1] - prev_point[1], next_point_1[0] - prev_point[0])
     # Convert to degree
@@ -344,20 +345,20 @@ def reward_function(params):
     steering_reward = 200/(1+abs(params['steering_angle']-total_angle))
     if params['steps'] > 0:
         progress_reward =(params['progress'])/(params['steps'])+ params['progress']//2
-        reward += (progress_reward)**2
+        reward += progress_reward
     else:
         return 1e-9
-    reward=reward
+    reward=reward+ steering_reward
     if direction_diff <=10.0:
         reward+=10.0
-    LOOK_AHEAD_POINTS = 3
+    LOOK_AHEAD_POINTS = 4
     MIN_SPEED = 1.3
     MAX_SPEED = 4
-    speed_reward = 1
+
     # Calculate optimal speed
     optimal_speed_waypoints = optimal_velocity(track=optimal_waypoints, 
         min_speed=MIN_SPEED, max_speed=MAX_SPEED, look_ahead_points=LOOK_AHEAD_POINTS)
-    speed_reward = speed_reward + 200/(1+3*abs(optimal_speed_waypoints[next_index%waypoints_length]-params['speed']))
+    reward = reward + 200/(1+abs(optimal_speed_waypoints[next_index%waypoints_length]-params['speed']))
         
     if abs(params['steering_angle'])<10 and abs(total_angle)>20:
         return 1e-3
@@ -371,13 +372,12 @@ def reward_function(params):
     if steps>0:
         step_reward= ((progress*25)/steps)**3
 
-    reward+=(step_reward)**2
-    reward += (speed_reward+steering_reward)**2
+    reward+=step_reward
+
     if abs(params['steering_angle']-total_angle) >=20:
         reward*=0.25
 
     if next in straight and params['speed']<2.5:
         reward*=0.3
-
 
     return float(reward)
