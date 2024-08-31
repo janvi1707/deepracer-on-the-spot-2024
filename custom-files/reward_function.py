@@ -344,9 +344,10 @@ def reward_function(params):
     steering_reward = 20/(1+abs(params['steering_angle']-total_angle))
     if params['steps'] > 0:
         progress_reward =(params['progress'])/(params['steps'])+ params['progress']//2
-        reward += (progress_reward)**2
+        reward += (progress_reward/10)**2
     else:
         return 1e-9
+    reward=reward
     if direction_diff <=10.0:
         reward+=10.0
     LOOK_AHEAD_POINTS = 4
@@ -368,7 +369,7 @@ def reward_function(params):
     steps=params['steps']
     progress= params['progress']
     if steps>0:
-        step_reward= (((progress*25)/steps)**3)/10
+        step_reward= (((progress*25)/steps)/10)**3
 
     reward+=(step_reward)**2
     reward += (speed_reward+steering_reward)**2
